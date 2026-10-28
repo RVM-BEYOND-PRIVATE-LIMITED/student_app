@@ -1,0 +1,10 @@
+# Lightsail container service (ap-south-1 / Mumbai — same region as Supabase project)
+# api: 512MB, worker: 512MB (smallest plan with 1GB total). Scale 1-2 nodes.
+# Health check: /health. Deploy via .github/workflows/api-deploy.yml (manual approval for prod).
+{
+  "serviceName": "rvm-student",
+  "containers": {
+    "api": { "command": ["node", "apps/api/dist/server.js"], "port": 3000 },
+    "worker": { "command": ["node", "apps/api/dist/worker.js"] }
+  }
+}

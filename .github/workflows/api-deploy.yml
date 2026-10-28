@@ -1,0 +1,30 @@
+name: api-deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "build image tagged with $GITHUB_SHA; push via aws lightsail push-container-image"
+  migrate-staging:
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - run: pnpm db:migrate # staging DATABASE_URL from environment secrets
+  deploy-staging:
+    needs: migrate-staging
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - run: echo "deploy to staging lightsail service; run smoke test (OTP test number, quote, booking, Razorpay test, webhook)"
+  deploy-production:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - run: echo "MANUAL APPROVAL required. Backup lms, migrate prod, deploy prod (create-container-service-deployment, health /health)."

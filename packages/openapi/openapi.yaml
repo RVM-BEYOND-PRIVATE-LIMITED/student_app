@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info:
+  title: RVM Student App API
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      summary: Liveness
+      responses:
+        '200':
+          description: OK
+  /ready:
+    get:
+      summary: Readiness (DB + queue)
+      responses:
+        '200':
+          description: Ready
+        '503':
+          description: Not ready
+  /v1/config:
+    get:
+      summary: App config
+      responses:
+        '200':
+          description: Config

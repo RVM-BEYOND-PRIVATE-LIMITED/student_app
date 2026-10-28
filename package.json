@@ -1,0 +1,27 @@
+{
+  "name": "rvm-student-app",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "db:migrate": "pnpm --filter @rvm-student/api db:migrate",
+    "db:new": "pnpm --filter @rvm-student/api db:new",
+    "openapi:build": "pnpm --filter @rvm-student/api openapi:build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.3.0"
+  }
+}
