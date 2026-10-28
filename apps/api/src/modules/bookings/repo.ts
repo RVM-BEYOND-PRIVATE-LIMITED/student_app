@@ -1,1 +1,5 @@
-﻿// bookings/repo.ts — M0 placeholder. M1+ implements per spec. Module owns only its own lms tables; cross-module via public service interface.
+﻿// bookings/repo.ts — owns ONLY lms.bookings, lms.booking_items, lms.seat_holds, lms.batch_capacity.
+// Capacity check uses SELECT ... FOR UPDATE in batch-ID order (see service.ts).
+export interface BookingRepo {
+  countActiveForStudent(studentId: string): Promise<number>;
+}

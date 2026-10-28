@@ -2,24 +2,635 @@ openapi: 3.0.3
 info:
   title: RVM Student App API
   version: 1.0.0
+components:
+  schemas: {}
 paths:
   /health:
     get:
-      summary: Liveness
       responses:
-        '200':
-          description: OK
+        "200":
+          description: Default Response
   /ready:
     get:
-      summary: Readiness (DB + queue)
       responses:
-        '200':
-          description: Ready
-        '503':
-          description: Not ready
-  /v1/config:
+        "200":
+          description: Default Response
+  /config:
     get:
-      summary: App config
       responses:
-        '200':
-          description: Config
+        "200":
+          description: Default Response
+  /auth/otp/request:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone_e164:
+                  type: string
+                  pattern: ^\+\d{7,15}$
+              required:
+                - phone_e164
+              additionalProperties: false
+      responses:
+        "200":
+          description: Default Response
+  /auth/otp/verify:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone_e164:
+                  type: string
+                  pattern: ^\+\d{7,15}$
+                code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+              required:
+                - phone_e164
+                - code
+              additionalProperties: false
+      responses:
+        "200":
+          description: Default Response
+  /auth/refresh:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /auth/logout:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /auth/device/rebind:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /me/guardian:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /me/guardian/verify:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /me/kyc/upload-url:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /me/kyc/complete:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /me/onboarding:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /me/profile:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /me:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /me/dashboard:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /me/enrolments:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /me/timetable:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /me/attendance:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /me/attendance/corrections:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /me/fees:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /me/instalments/{id}/razorpay-order:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /me/receipts/{id}.pdf:
+    get:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /me/devices:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /me/devices/{id}:
+    delete:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /me/deletion-request:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /undertakings/current:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /undertakings/video/heartbeat:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /undertakings/accept:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /me/undertaking.pdf:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /courses:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /courses/{id}:
+    get:
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /batches:
+    get:
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: query
+          name: course_id
+          required: false
+        - schema:
+            type: string
+          in: query
+          name: centre_id
+          required: false
+        - schema:
+            type: string
+          in: query
+          name: schedule
+          required: false
+      responses:
+        "200":
+          description: Default Response
+  /batches/detail:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /pricing/quote:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      team_course_id:
+                        type: string
+                        format: uuid
+                      team_batch_id:
+                        type: string
+                        format: uuid
+                      list_paise:
+                        type: integer
+                        minimum: 0
+                    required:
+                      - team_course_id
+                      - team_batch_id
+                      - list_paise
+                    additionalProperties: false
+                  minItems: 1
+                  maxItems: 10
+                fee_plan:
+                  type: string
+                  enum:
+                    - one_time
+                    - three_instalments
+              required:
+                - items
+                - fee_plan
+              additionalProperties: false
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subtotal_paise:
+                    type: integer
+                    minimum: 0
+                  discount_paise:
+                    type: integer
+                    minimum: 0
+                  total_paise:
+                    type: integer
+                    minimum: 0
+                  seat_fee_paise:
+                    type: integer
+                    minimum: 0
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        team_course_id:
+                          type: string
+                          format: uuid
+                        team_batch_id:
+                          type: string
+                          format: uuid
+                        list_paise:
+                          type: integer
+                          minimum: 0
+                        discount_paise:
+                          type: integer
+                          minimum: 0
+                        net_paise:
+                          type: integer
+                          minimum: 0
+                      required:
+                        - team_course_id
+                        - team_batch_id
+                        - list_paise
+                        - discount_paise
+                        - net_paise
+                      additionalProperties: false
+                  price_snapshot:
+                    type: object
+                    additionalProperties: {}
+                required:
+                  - subtotal_paise
+                  - discount_paise
+                  - total_paise
+                  - seat_fee_paise
+                  - items
+                  - price_snapshot
+                additionalProperties: false
+  /bookings:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      team_course_id:
+                        type: string
+                        format: uuid
+                      team_batch_id:
+                        type: string
+                        format: uuid
+                      list_paise:
+                        type: integer
+                        minimum: 0
+                    required:
+                      - team_course_id
+                      - team_batch_id
+                      - list_paise
+                    additionalProperties: false
+                  minItems: 1
+                  maxItems: 10
+                fee_plan:
+                  type: string
+                  enum:
+                    - one_time
+                    - three_instalments
+              required:
+                - items
+                - fee_plan
+              additionalProperties: false
+      responses:
+        "200":
+          description: Default Response
+  /bookings/{id}:
+    get:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /bookings/{id}/razorpay-order:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /bookings/{id}/pay-at-reception:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /bookings/{id}/cancel:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /webhooks/razorpay:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /internal/reception-receipts:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /me/library:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /playback/sessions:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                video_id:
+                  type: string
+                  format: uuid
+                device_id:
+                  type: string
+                  format: uuid
+              required:
+                - video_id
+                - device_id
+              additionalProperties: false
+      responses:
+        "200":
+          description: Default Response
+  /playback/sessions/{id}/heartbeat:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                position_s:
+                  type: integer
+                  minimum: 0
+              required:
+                - position_s
+              additionalProperties: false
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /playback/sessions/{id}/end:
+    post:
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /me/live-sessions:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /live-sessions/{id}/join:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /live-sessions/{id}/doubts:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /webhooks/live/{provider}:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: provider
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /webhooks/vdocipher:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /internal/live-sessions:
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /internal/students/{id}/extra-views:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /me/tickets:
+    get:
+      responses:
+        "200":
+          description: Default Response
+    post:
+      responses:
+        "200":
+          description: Default Response
+  /me/tickets/{id}:
+    get:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /me/tickets/{id}/messages:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /me/tickets/{id}/reopen:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /me/notifications:
+    get:
+      responses:
+        "200":
+          description: Default Response
+  /me/notifications/{id}/read:
+    post:
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: id
+          required: true
+      responses:
+        "200":
+          description: Default Response
+  /me/push-token:
+    put:
+      responses:
+        "200":
+          description: Default Response
+  /fees/plan:
+    get:
+      responses:
+        "200":
+          description: Default Response
+servers:
+  - url: /v1
