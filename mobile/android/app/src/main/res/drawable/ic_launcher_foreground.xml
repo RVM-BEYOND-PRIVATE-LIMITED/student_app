@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The handoff's gear mark (lib/widgets/brand_mark.dart draws the same
+     shape): an orange gear ring with eight teeth around a white hub, inside
+     the 66dp safe zone of a 108dp adaptive icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M54,37.1a16.9,16.9 0,1 1,0 33.8a16.9,16.9 0,1 1,0 -33.8"
+        android:strokeWidth="3.2"
+        android:strokeColor="#F97316"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M75.5,54L82,54M69.2,69.2L73.8,73.8M54,75.5L54,82M38.8,69.2L34.2,73.8M32.5,54L26,54M38.8,38.8L34.2,34.2M54,32.5L54,26M69.2,38.8L73.8,34.2"
+        android:strokeWidth="3.2"
+        android:strokeColor="#F97316"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M54,48.1a5.9,5.9 0,1 1,0 11.8a5.9,5.9 0,1 1,0 -11.8"
+        android:strokeWidth="3"
+        android:strokeColor="#FFFFFF"
+        android:fillColor="#00000000" />
+</vector>

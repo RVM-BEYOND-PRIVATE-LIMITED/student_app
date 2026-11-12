@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Student design handoff navy (lib/theme/student_tokens.dart). -->
+    <color name="ic_launcher_background">#1E305E</color>
+    <!-- The splash's middle navy, so the cold start does not flash white. -->
+    <color name="launch_navy">#1A2B53</color>
+</resources>

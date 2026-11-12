@@ -1,0 +1,114 @@
+name: rvm_student
+description: >-
+  RVM Student: the student app, one Flutter project for Android, in English and
+  Hindi (student_app #1).
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.9.0
+  # The app is built and checked on Flutter 3.35.7 only (mobile/README.md and
+  # .github/workflows/mobile-ci.yml). An older SDK fails here, loudly.
+  flutter: ">=3.35.7"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Translations (item 8). flutter_localizations dresses the framework's own
+  # strings (text selection, semantics labels) in the chosen language; gen-l10n
+  # output imports intl. intl is `any` on purpose: flutter_localizations pins
+  # one exact intl per SDK, so any range written here is either redundant or a
+  # conflict at the next SDK bump.
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+
+  # The Team app's stack, with the constraints its workspace uses
+  # (team_app flutter_app/rvm_team_app/pubspec.yaml).
+  flutter_bloc: ^8.1.6
+  get_it: ^7.7.0
+  equatable: ^2.0.5
+  go_router: ^14.0.0
+  dio: ^5.7.0
+  connectivity_plus: ^6.0.5
+  package_info_plus: ^9.0.1
+  path_provider: ^2.1.5
+
+  # The Team app's shared packages (item 3), from team_app at a pinned commit.
+  # 0134dae is the head of team_app's feat/issue50-core-packages branch: it
+  # holds the IdempotencyInterceptor, Failure.requestId, the Redact helper and
+  # the paise formatter this app uses. Move the ref to team_app main once that
+  # branch merges. team_app is public, so pub needs no credentials.
+  core_network:
+    git:
+      url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
+      path: flutter_app/packages/core_network
+      ref: 0134daefbc44b22c3a6cece428f69054540accdc
+  core_auth:
+    git:
+      url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
+      path: flutter_app/packages/core_auth
+      ref: 0134daefbc44b22c3a6cece428f69054540accdc
+  core_bloc:
+    git:
+      url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
+      path: flutter_app/packages/core_bloc
+      ref: 0134daefbc44b22c3a6cece428f69054540accdc
+  core_ui:
+    git:
+      url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
+      path: flutter_app/packages/core_ui
+      ref: 0134daefbc44b22c3a6cece428f69054540accdc
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  bloc_test: ^9.1.7
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+  # Runs gen-l10n from l10n.yaml during `flutter pub get`, so lib/l10n/gen/
+  # exists before analyze and test. The generated files are not committed.
+  generate: true
+
+  assets:
+    # The fonts' licences, shown on the app's licence page.
+    - assets/fonts/Geist/OFL.txt
+    - assets/fonts/Fraunces/OFL.txt
+    - assets/fonts/NotoSansDevanagari/OFL.txt
+
+  # Bundled, never downloaded (item 8). Each file is declared once, at its
+  # real weight: a weight without its own file is matched to the nearest real
+  # one instead of being drawn from the wrong outlines.
+  # Sources and checksums: assets/fonts/SOURCES.md.
+  fonts:
+    - family: Geist
+      fonts:
+        - asset: assets/fonts/Geist/Geist-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Geist/Geist-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Geist/Geist-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Geist/Geist-Bold.ttf
+          weight: 700
+    - family: GeistMono
+      fonts:
+        - asset: assets/fonts/GeistMono/GeistMono-Medium.ttf
+          weight: 500
+    - family: Fraunces
+      fonts:
+        - asset: assets/fonts/Fraunces/Fraunces9pt-Regular.ttf
+          weight: 400
+    - family: NotoSansDevanagari
+      fonts:
+        - asset: assets/fonts/NotoSansDevanagari/NotoSansDevanagari-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/NotoSansDevanagari/NotoSansDevanagari-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansDevanagari/NotoSansDevanagari-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/NotoSansDevanagari/NotoSansDevanagari-Bold.ttf
+          weight: 700

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only (student_app #1, item 12). A dev build with no
+     STUDENT_API_HOST talks to a Student API on this computer over plain HTTP:
+     127.0.0.1 or localhost through `adb reverse`, or 10.0.2.2 from the
+     emulator. Only those loopback names may use cleartext; every other host,
+     and every release build, keeps Android's HTTPS-only default. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

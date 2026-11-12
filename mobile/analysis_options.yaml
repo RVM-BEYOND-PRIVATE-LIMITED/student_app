@@ -1,0 +1,14 @@
+# The Flutter lint set, as the Team app uses it, plus a few rules that keep
+# this code base consistent.
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - lib/l10n/gen/**
+
+linter:
+  rules:
+    - always_declare_return_types
+    - prefer_final_locals
+    - prefer_single_quotes
+    - unawaited_futures
