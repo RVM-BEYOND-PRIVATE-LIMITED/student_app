@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:core_auth/core_auth.dart';
 import 'package:core_network/core_network.dart';
 import 'package:dio/dio.dart';
+import 'package:rvm_student/core/security/device_hints.dart';
 import 'package:rvm_student/core/version/version_gate.dart';
 
 /// [SecureStore] in memory. One instance stands for the phone's storage, so
@@ -106,6 +107,17 @@ ResponseBody jsonReply(int status, Object body) => ResponseBody.fromString(
     Headers.contentTypeHeader: [Headers.jsonContentType],
   },
 );
+
+/// [DeviceHintsSource] that answers [hints]. The phone's own channels never
+/// answer inside a widget test's fake time.
+class FakeDeviceHints implements DeviceHintsSource {
+  const FakeDeviceHints([this.hints = DeviceHints.unknown]);
+
+  final DeviceHints hints;
+
+  @override
+  Future<DeviceHints> read() async => hints;
+}
 
 /// A [VersionSource] that answers what a test says.
 class FakeVersionSource implements VersionSource {

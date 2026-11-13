@@ -3,14 +3,25 @@
 The new student app: one Flutter project, Android only, in English and Hindi
 (student_app #1). Every later student-app issue builds on this foundation.
 
+## Android only
+
+The student app is built and published for **Android only** (student_app
+#8, item 13). No iOS target is built or published, there is no web or
+desktop build, and no separate Campus app is listed. This project holds
+`android/` and no other platform folder. CI's first step
+(`tool/android_only.sh`) fails when `mobile/` grows `ios/`, `macos/`, `web/`,
+`linux/` or `windows/`, or when `.metadata` lists another platform, so never
+run `flutter create` here with another `--platforms` value.
+
 What is here today: the project on the Team app's stack, the Team app's core
 packages, the Student API client (headers, Idempotency-Key, session renewal
 hook), the student session on secure storage, translations with bundled
 fonts and a saved language switch, display helpers for money and IST times,
 the launch version gate (fail-open), dev and prod configurations, on-device
-crash capture, and these screens: Splash, Update required, Language, the
-shared states (skeleton, empty, error with request id, offline banner) and a
-dev-only Developer menu. No Student API endpoint is called yet: the API and
+crash capture, the capture guard and the device hints (student_app #8), the
+release hardening and release checks (student_app #8), and these screens:
+Splash, Update required, Language, the shared states (skeleton, empty, error
+with request id, offline banner) and a dev-only Developer menu. No Student API endpoint is called yet: the API and
 its contract do not exist (Scheduler_Backend #158, student_app #10).
 
 ## Flutter version
@@ -133,6 +144,89 @@ minimum version.
   The Developer menu shows them. Sending crash reports off the phone is
   student_app #12 and needs an OK first.
 
+## Device security (student_app #8)
+
+### Capture guard
+
+`SecureScreen` (`lib/core/security/secure_screen.dart`) marks a screen that
+must not be captured. While it can be seen, `MainActivity.kt` sets Android's
+`FLAG_SECURE` on the app's window (channel `rvm_student/secure_window`):
+screenshots and screen recordings come out black and the recent-apps preview
+is blank. Every Flutter screen shares that one window, so the guard is
+counted (`SecureWindow`) and follows what is on screen: it is on from the
+marked screen's first frame and under a dialog or bottom sheet, off once an
+opaque screen covers it or its go_router shell tab is not the selected one
+(or `visible: false` for other tab containers), on again when it comes back,
+sent again when the app returns to the foreground, and off when the screen
+leaves. It does not stop a second phone's camera.
+
+No student screen is marked yet: the ID document preview (#3), the payout
+account entry (#6) and the video player (#9) are marked when they are built.
+To see it work on a phone, open the Developer menu, then "Capture guard
+test":
+
+```bash
+adb exec-out screencap -p > marked.png        # black
+adb shell screenrecord --time-limit 5 /sdcard/marked.mp4   # black
+```
+
+Go back to the menu and both capture it again.
+
+### Device hints
+
+`PlatformDeviceHints` (`lib/core/security/device_hints.dart`) reads three
+hints: the phone looks rooted (an `su` binary in a usual place, or a system
+built with test keys), it is an emulator (device_info_plus
+`isPhysicalDevice`), a debugger is attached. They are **for messages only**:
+root and emulators can be hidden, so they never refuse, hide or limit
+anything, and they are not sent anywhere. The server decides from the Play
+Integrity verdict (Scheduler_Backend #159 at phone binding, #192 at
+play-session start; neither exists yet), and `DeviceHints.notes()` only adds
+a plain sentence under the message it sends. The Developer menu shows them.
+No permission is needed and no installed app is listed (no
+`QUERY_ALL_PACKAGES`).
+
+## Release builds (student_app #8)
+
+```bash
+bash tool/build_release.sh \
+  --dart-define=FLAVOR=prod --dart-define=STUDENT_API_HOST=https://...
+dart run tool/check_release.dart \
+  build/app/outputs/bundle/release/app-release.aab \
+  build/app/outputs/flutter-apk/app-*-release.apk
+dart run tool/size_report.dart
+```
+
+- `tool/build_release.sh` builds, from a clean tree, the App Bundle for Play
+  and one APK per ABI, both `--obfuscate`d. R8 shrinks and obfuscates the
+  code and shrinks the resources (`android/app/build.gradle.kts`).
+- **Keep the symbol files** of every build that leaves this computer, one
+  folder per version: `build/symbols/appbundle/` and `build/symbols/apk/`
+  hold the Dart symbols (`app.android-*.symbols`) and R8's `mapping.txt`.
+  `flutter symbolize -d <symbols file> -i <stack trace>` turns an obfuscated
+  crash back into names. The App Bundle also carries R8's mapping inside, for
+  Play. They are never committed (`.gitignore`).
+- `tool/check_release.dart` fails a build that targets an API level below
+  Flutter's default (36), is debuggable, allows cleartext traffic, has a
+  component that does not say `android:exported`, exports a component that
+  was not reviewed, has no R8 mapping inside the bundle, or carries a
+  keystore, signing file, `.env` or private key.
+- Cleartext traffic is off for the whole app
+  (`android:usesCleartextTraffic="false"`); only the debug build's network
+  security config lets Android's own network stack reach this computer.
+- Exported components, reviewed: the launcher activity (`MainActivity`,
+  needed by the home screen; it reads no extras) and androidx
+  profileinstaller's `ProfileInstallReceiver`, which only a caller holding
+  `android.permission.DUMP` (adb, the system) can reach. Anything else
+  exported fails the check until it is reviewed and added to
+  `reviewedExports`.
+- The target API level is Flutter's default (`flutter.targetSdkVersion`, 36
+  on Flutter 3.35.7), never a pinned number.
+- `tool/size_report.dart` prints the size of the bundle and each per-ABI
+  APK. It is a report: no size budget is agreed (student_app #13).
+- Signing and the Play upload are not here: the release key, its secrets
+  and the Play Console are student_app #20.
+
 ## Translations and fonts
 
 - English is the template: add a key to `lib/l10n/app_en.arb`, then the same
@@ -164,10 +258,12 @@ little differently.
 ## CI
 
 `.github/workflows/mobile-ci.yml` runs on every pull request that touches
-`mobile/`: Flutter 3.35.7 from its git tag, the missing-translation check,
-`flutter analyze`, the tests, the golden tests, a release build for size
-only (split per ABI) and an APK size report in the job summary. The report
-sets no budget (student_app #13).
+`mobile/`: the Android-only check, Flutter 3.35.7 from its git tag, the
+missing-translation check, `flutter analyze`, the tests, the golden tests,
+the release builds (`tool/build_release.sh`: App Bundle and per-ABI APKs,
+obfuscated, signed only with the runner's throwaway debug key), the release
+check (`tool/check_release.dart`) and a size report in the job summary
+(`tool/size_report.dart`). The report sets no budget (student_app #13).
 
 ## Waiting on the backend
 
@@ -176,6 +272,9 @@ sets no budget (student_app #13).
 - Session renewal: `StudentAuthInterceptor` is ready, but the renewal call
   does not exist (Scheduler_Backend #158, #159); until then a refused token
   ends the session.
+- The server's integrity verdict and the bound-phone decision, and the
+  refusal screens that show them: Scheduler_Backend #159, #192 (student_app
+  #8). Until then the device hints only feed messages.
 - The server's minimum version, feature switches and the student's stage:
   Scheduler_Backend #158. `VersionSource` answers "unknown" until then, so
   the launch check lets the app through. A build that cannot read its own

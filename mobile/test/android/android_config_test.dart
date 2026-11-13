@@ -97,7 +97,12 @@ void main() {
     // real sockets in test/core/network/host_guard_test.dart.
     test('Android\'s own network stack (not Dart): plain HTTP only to this '
         'computer, only in debug builds', () {
-      expect(read(mainManifest), isNot(contains('usesCleartextTraffic')));
+      // Off everywhere (student_app #8, item 5); the debug build's network
+      // security config takes precedence over the attribute.
+      expect(
+        read(mainManifest),
+        contains('android:usesCleartextTraffic="false"'),
+      );
       expect(read(mainManifest), isNot(contains('networkSecurityConfig')));
       expect(read(debugManifest), contains('@xml/network_security_config'));
 
@@ -112,6 +117,67 @@ void main() {
       };
       expect(domains, {'127.0.0.1', 'localhost', '10.0.2.2'});
       expect(config, isNot(contains('<base-config')));
+    });
+  });
+
+  group('release hardening (student_app #8, item 5)', () {
+    /// The `release { ... }` block of the build file.
+    String releaseBlock() {
+      final gradle = read(buildFile);
+      final start = gradle.indexOf('release {');
+      expect(start, isNot(-1));
+      var depth = 0;
+      for (var i = start; i < gradle.length; i++) {
+        if (gradle[i] == '{') depth++;
+        if (gradle[i] == '}' && --depth == 0) {
+          return gradle.substring(start, i + 1);
+        }
+      }
+      fail('the release block does not close');
+    }
+
+    test('R8 code and resource shrinking are pinned on for release', () {
+      final release = releaseBlock();
+
+      expect(release, contains('isMinifyEnabled = true'));
+      expect(release, contains('isShrinkResources = true'));
+      expect(read(buildFile), isNot(contains('isMinifyEnabled = false')));
+    });
+
+    test('the target API level is Flutter\'s default, not a pinned number', () {
+      expect(read(buildFile), contains('targetSdk = flutter.targetSdkVersion'));
+      expect(read(buildFile), isNot(contains(RegExp(r'targetSdk\s*=\s*\d'))));
+    });
+
+    test('every component in the manifest says whether it is exported', () {
+      final manifest = read(mainManifest);
+      final components = RegExp(
+        r'<(activity|activity-alias|service|receiver|provider)\b[^>]*>',
+      ).allMatches(manifest).toList();
+
+      expect(components, isNotEmpty);
+      for (final c in components) {
+        expect(c[0], contains('android:exported='), reason: c[0]);
+      }
+      // The launcher activity is the only one exported on purpose.
+      expect(
+        RegExp('android:exported="true"').allMatches(manifest),
+        hasLength(1),
+      );
+    });
+
+    test('release builds are obfuscated and keep their symbol files', () {
+      final script = read('tool/build_release.sh');
+
+      for (final kind in ['appbundle', 'apk --split-per-abi']) {
+        expect(script, contains('build $kind'), reason: kind);
+      }
+      expect(script, contains('--obfuscate'));
+      expect(script, contains(r'--split-debug-info="$symbols/$kind"'));
+      expect(script, contains('cp "\$mapping" "\$symbols/\$kind/mapping.txt"'));
+      // Symbol files never enter git (mobile/.gitignore).
+      expect(read('.gitignore'), contains('app.*.symbols'));
+      expect(read('.gitignore'), contains('/build/'));
     });
   });
 }

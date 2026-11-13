@@ -70,9 +70,11 @@ void main() {
     expect(go(Routes.devMenu), isNull);
     expect(go(Routes.devStates), isNull);
     expect(go(Routes.devCrashLog), isNull);
+    expect(go(Routes.devCaptureGuard), isNull);
 
     expect(go(Routes.devMenu, isDev: false), Routes.welcome);
     expect(go(Routes.devStates, isDev: false), Routes.welcome);
     expect(go(Routes.devCrashLog, isDev: false), Routes.welcome);
+    expect(go(Routes.devCaptureGuard, isDev: false), Routes.welcome);
   });
 }

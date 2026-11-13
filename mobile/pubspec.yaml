@@ -33,6 +33,9 @@ dependencies:
   connectivity_plus: ^6.0.5
   package_info_plus: ^9.0.1
   path_provider: ^2.1.5
+  # The emulator hint (student_app #8, item 2): AndroidDeviceInfo's
+  # isPhysicalDevice. Same constraint as the Team app.
+  device_info_plus: ^12.4.0
 
   # The Team app's shared packages (item 3), from team_app at a pinned commit.
   # 0134dae is the head of team_app's feat/issue50-core-packages branch: it

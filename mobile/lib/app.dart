@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'core/app_info.dart';
 import 'core/crash/crash_log.dart';
 import 'core/env/student_env.dart';
+import 'core/security/device_hints.dart';
 import 'core/session/student_session.dart';
 import 'features/connectivity/connectivity_bloc.dart';
 import 'features/connectivity/offline_banner.dart';
@@ -47,6 +48,7 @@ class _StudentAppState extends State<StudentApp> {
         RepositoryProvider.value(value: getIt<AppInfo>()),
         RepositoryProvider.value(value: getIt<StudentSession>()),
         RepositoryProvider.value(value: getIt<CrashLogStore>()),
+        RepositoryProvider.value(value: getIt<DeviceHintsSource>()),
       ],
       child: MultiBlocProvider(
         providers: [

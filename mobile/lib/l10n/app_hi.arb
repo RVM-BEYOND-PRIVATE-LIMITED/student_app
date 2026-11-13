@@ -57,6 +57,10 @@
   "configErrorTitle": "यह बिल्ड शुरू नहीं हो सकता",
   "configErrorBody": "इसे स्टूडेंट एपीआई के पते के बिना बनाया गया है। कृपया RVM से मिला बिल्ड इंस्टॉल करें।",
 
+  "deviceHintRooted": "लगता है यह फ़ोन रूट किया गया है: इसका सिस्टम बदला गया है।",
+  "deviceHintEmulator": "लगता है यह फ़ोन नहीं, एमुलेटर है।",
+  "deviceHintDebugger": "ऐप से डीबग करने वाला एक टूल जुड़ा है।",
+
   "devMenuTitle": "डेवलपर मेन्यू",
   "devSectionBuild": "यह बिल्ड",
   "devFlavor": "कॉन्फ़िगरेशन",
@@ -87,6 +91,15 @@
   "devRecordTestError": "टेस्ट एरर दर्ज करें",
   "devTestErrorRecorded": "टेस्ट एरर दर्ज हो गया",
   "devLicences": "लाइसेंस",
+  "devSectionDevice": "यह फ़ोन",
+  "devHintRooted": "रूट किया हुआ लगता है",
+  "devHintEmulator": "एमुलेटर",
+  "devHintDebugger": "डीबगर जुड़ा है",
+  "devUnknown": "पता नहीं चला",
+  "devHintsNote": "ये सिर्फ़ संदेशों के लिए संकेत हैं। यह फ़ोन इस्तेमाल हो सकता है या नहीं, यह सर्वर तय करता है।",
+  "devCaptureGuard": "स्क्रीन कैप्चर रोक की जाँच",
+  "devCaptureGuardTitle": "इस स्क्रीन को कैप्चर नहीं किया जा सकता",
+  "devCaptureGuardBody": "इस स्क्रीन के स्क्रीनशॉट और स्क्रीन रिकॉर्डिंग काले आते हैं, और हाल के ऐप्स में इसका प्रीव्यू खाली दिखता है। वापस जाएँ, तो कैप्चर फिर से काम करेगा।",
 
   "gallerySkeleton": "लोड हो रहा है",
   "galleryEmpty": "खाली",

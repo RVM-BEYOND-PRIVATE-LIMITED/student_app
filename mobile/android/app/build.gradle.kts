@@ -26,6 +26,10 @@ android {
         // student_app #20 before the first pilot build.
         applicationId = "com.rvm.rvmstudent"
         minSdk = flutter.minSdkVersion
+        // Flutter's default (36, Android 16, on Flutter 3.35.7), never a
+        // number of our own, so it moves up with Flutter (student_app #8,
+        // item 5). Play raises its minimum every year; tool/check_release.dart
+        // fails a release build that targets less than 36.
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -45,6 +49,19 @@ android {
             if (System.getenv("RVM_CI_SIZE_REPORT") == "true") {
                 signingConfig = signingConfigs.getByName("debug")
             }
+
+            // R8 code shrinking and obfuscation, and resource shrinking
+            // (student_app #8, item 5). The Flutter Gradle plugin already
+            // turns both on for every release build (Flutter 3.35.7 ignores
+            // `--no-shrink`) and adds its own keep rules with
+            // proguard-android-optimize.txt; they are stated here so the
+            // release build type says what it does, and a test
+            // (test/android/android_config_test.dart) keeps them on.
+            // R8's mapping file lands in build/app/outputs/mapping/release/
+            // and the Dart symbol files come from `--split-debug-info`
+            // (tool/build_release.sh): both are kept for crash reports.
+            isMinifyEnabled = true
+            isShrinkResources = true
         }
     }
 }
