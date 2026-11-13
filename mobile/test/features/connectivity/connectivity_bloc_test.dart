@@ -150,6 +150,128 @@ void main() {
     await _close(tester, bloc);
   });
 
+  testWidgets('in the background the checks stop; back in the foreground it '
+      'checks at once and the back-off starts again', (tester) async {
+    net.reachable = false;
+    final bloc = net.bloc();
+    await tester.pump();
+    final first = net.probes;
+    await tester.pump(const Duration(seconds: 5));
+    expect(net.probes, first + 1, reason: 'at 5 s; the next waits 10 s');
+
+    bloc.add(const ConnectivityPaused());
+    await tester.pump();
+    await tester.pump(const Duration(minutes: 10));
+    expect(net.probes, first + 1, reason: 'no checks in the background');
+    expect(bloc.state.online, isFalse);
+
+    bloc.add(const ConnectivityResumed());
+    await tester.pump();
+    expect(net.probes, first + 2, reason: 'checked at once');
+    expect(bloc.state.online, isFalse);
+    await tester.pump(const Duration(seconds: 4));
+    expect(net.probes, first + 2);
+    await tester.pump(const Duration(seconds: 1));
+    expect(net.probes, first + 3, reason: 'the back-off starts again at 5 s');
+    await _close(tester, bloc);
+  });
+
+  testWidgets('in the background neither a network change nor a check that '
+      'ends starts the back-off', (tester) async {
+    net.reachable = false;
+    final bloc = net.bloc(delays: const [Duration(seconds: 5)]);
+    await tester.pump();
+
+    // A check is running when the student leaves the app.
+    final hold = net.holdProbe = Completer<void>();
+    bloc.add(const ConnectivityResumed());
+    await tester.pump();
+    bloc.add(const ConnectivityPaused());
+    await tester.pump();
+    net.holdProbe = null;
+    hold.complete();
+    await tester.pump();
+    // The phone moves to mobile data, which does not work either.
+    net.interfaces.change(const [ConnectivityResult.mobile]);
+    await tester.pump();
+    expect(bloc.state.online, isFalse);
+    final probes = net.probes;
+
+    await tester.pump(const Duration(minutes: 10));
+    expect(net.probes, probes, reason: 'no timer runs in the background');
+
+    net.reachable = true;
+    bloc.add(const ConnectivityResumed());
+    await tester.pump();
+    expect(bloc.state.online, isTrue);
+    await _close(tester, bloc);
+  });
+
+  testWidgets('a check that hangs counts as offline after its timeout, and '
+      'the checks go on', (tester) async {
+    var calls = 0;
+    final hung = Completer<bool>();
+    final status = StreamController<bool>();
+    final bloc = ConnectivityBloc(
+      status.stream,
+      check: () {
+        calls++;
+        // The first call never answers, as a stuck platform call.
+        return calls == 1 ? hung.future : Future.value(true);
+      },
+      recheckDelays: const [Duration(seconds: 5)],
+      checkTimeout: const Duration(seconds: 6),
+    );
+
+    status.add(false);
+    await tester.pump(const Duration(seconds: 5));
+    expect(calls, 1);
+    await tester.pump(const Duration(seconds: 5));
+    expect(calls, 1, reason: 'still waiting on the first check');
+    await tester.pump(const Duration(seconds: 1));
+    expect(bloc.state.online, isFalse, reason: 'a timeout is still offline');
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump();
+    expect(calls, 2, reason: 'the hung call did not stop the checks');
+    expect(bloc.state.online, isTrue);
+
+    // The hung call answers at last: nothing listens any more.
+    hung.complete(false);
+    await tester.pump();
+    expect(bloc.state.online, isTrue);
+    await _close(tester, bloc);
+    unawaited(status.close());
+  });
+
+  testWidgets('the foreground check is not lost behind a hung one', (
+    tester,
+  ) async {
+    var calls = 0;
+    final status = StreamController<bool>();
+    final bloc = ConnectivityBloc(
+      status.stream,
+      check: () {
+        calls++;
+        return calls == 1 ? Completer<bool>().future : Future.value(false);
+      },
+      recheckDelays: const [Duration(seconds: 5)],
+    );
+    status.add(false);
+    await tester.pump();
+
+    bloc.add(const ConnectivityResumed());
+    await tester.pump();
+    expect(calls, 1);
+    await tester.pump(ConnectivityBloc.defaultCheckTimeout);
+    await tester.pump();
+    expect(bloc.state.online, isFalse);
+    await tester.pump(const Duration(seconds: 5));
+    expect(calls, 2, reason: 'the back-off runs on after the timeout');
+    await _close(tester, bloc);
+    unawaited(status.close());
+  });
+
   testWidgets('a check still running when the network speaks is dropped', (
     tester,
   ) async {
@@ -247,6 +369,13 @@ void main() {
 
     expect(bloc.isClosed, isTrue);
     expect(net.probes, probes);
+  });
+
+  test('the default check timeout outlasts core_network\'s 3 s lookup', () {
+    expect(
+      ConnectivityBloc.defaultCheckTimeout,
+      greaterThan(const Duration(seconds: 3)),
+    );
   });
 
   test('the default back-off is modest: 5 s first, at most a minute', () {
