@@ -133,8 +133,8 @@ packages:
     dependency: "direct main"
     description:
       path: "flutter_app/packages/core_auth"
-      ref: "0134daefbc44b22c3a6cece428f69054540accdc"
-      resolved-ref: "0134daefbc44b22c3a6cece428f69054540accdc"
+      ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
+      resolved-ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
       url: "https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git"
     source: git
     version: "0.0.1"
@@ -142,8 +142,8 @@ packages:
     dependency: "direct main"
     description:
       path: "flutter_app/packages/core_bloc"
-      ref: "0134daefbc44b22c3a6cece428f69054540accdc"
-      resolved-ref: "0134daefbc44b22c3a6cece428f69054540accdc"
+      ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
+      resolved-ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
       url: "https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git"
     source: git
     version: "0.0.1"
@@ -151,8 +151,8 @@ packages:
     dependency: "direct main"
     description:
       path: "flutter_app/packages/core_network"
-      ref: "0134daefbc44b22c3a6cece428f69054540accdc"
-      resolved-ref: "0134daefbc44b22c3a6cece428f69054540accdc"
+      ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
+      resolved-ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
       url: "https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git"
     source: git
     version: "0.0.1"
@@ -160,8 +160,8 @@ packages:
     dependency: "direct main"
     description:
       path: "flutter_app/packages/core_ui"
-      ref: "0134daefbc44b22c3a6cece428f69054540accdc"
-      resolved-ref: "0134daefbc44b22c3a6cece428f69054540accdc"
+      ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
+      resolved-ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
       url: "https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git"
     source: git
     version: "0.0.1"

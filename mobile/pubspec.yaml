@@ -38,30 +38,31 @@ dependencies:
   device_info_plus: ^12.4.0
 
   # The Team app's shared packages (item 3), from team_app at a pinned commit.
-  # 0134dae is the head of team_app's feat/issue50-core-packages branch: it
-  # holds the IdempotencyInterceptor, Failure.requestId, the Redact helper and
-  # the paise formatter this app uses. Move the ref to team_app main once that
-  # branch merges. team_app is public, so pub needs no credentials.
+  # 07bb9e3 is team_app's develop after PR #107 (merge of #99-#101, #106 and
+  # #107): the IdempotencyInterceptor, Failure.requestId and Failure.details,
+  # the Redact helper and the paise formatter this app uses. Move the ref to a
+  # team_app main commit once develop is promoted. team_app is public, so pub
+  # needs no credentials.
   core_network:
     git:
       url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
       path: flutter_app/packages/core_network
-      ref: 0134daefbc44b22c3a6cece428f69054540accdc
+      ref: 07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa
   core_auth:
     git:
       url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
       path: flutter_app/packages/core_auth
-      ref: 0134daefbc44b22c3a6cece428f69054540accdc
+      ref: 07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa
   core_bloc:
     git:
       url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
       path: flutter_app/packages/core_bloc
-      ref: 0134daefbc44b22c3a6cece428f69054540accdc
+      ref: 07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa
   core_ui:
     git:
       url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
       path: flutter_app/packages/core_ui
-      ref: 0134daefbc44b22c3a6cece428f69054540accdc
+      ref: 07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa
 
 dev_dependencies:
   flutter_test:

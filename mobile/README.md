@@ -65,10 +65,11 @@ works with).
 `core_network`, `core_auth`, `core_bloc` and `core_ui` come from
 [team_app](https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app) as git
 dependencies (`flutter_app/packages/<name>`), pinned to commit
-`0134daefbc44b22c3a6cece428f69054540accdc` on `feat/issue50-core-packages`.
-That commit holds the `IdempotencyInterceptor`, `Failure.requestId`, the
-`Redact` helper and the paise formatter (team_app #50, #55, #61).
-**Move the pin to a team_app `main` commit once that branch merges.** pub
+`07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa` on team_app `develop` (after PR #107).
+That commit holds the `IdempotencyInterceptor`, `Failure.requestId` and
+`Failure.details`, the `Redact` helper and the paise formatter (team_app #50,
+#55, #61; student_app #1 item 7).
+**Move the pin to a team_app `main` commit once `develop` is promoted.** pub
 accepts the packages through git as they are, so nothing is vendored.
 
 ## Run it
