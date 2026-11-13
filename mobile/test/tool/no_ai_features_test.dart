@@ -24,13 +24,14 @@ void main() {
   void append(String path, List<String> lines) =>
       file(path).writeAsStringSync(text(lines), mode: FileMode.append);
 
-  /// Adds the message [key] to the project's English ARB file.
-  void message(String key, String value) {
-    final arb = file('lib/l10n/app_en.arb');
+  /// Adds the message [key] to the project's ARB file for [locale], as its
+  /// line 3.
+  void message(String key, String value, {String locale = 'en'}) {
+    final arb = file('lib/l10n/app_$locale.arb');
     arb.writeAsStringSync(
       arb.readAsStringSync().replaceFirst(
-        '"@@locale": "en",',
-        '"@@locale": "en",\n  "$key": "$value",',
+        '"@@locale": "$locale",',
+        '"@@locale": "$locale",\n  "$key": "$value",',
       ),
     );
   }
@@ -72,6 +73,7 @@ void main() {
       '  "@@locale": "en",',
       '  "resumeVideo": "Resume the video",',
       '  "askDoubt": "Ask your trainer a doubt",',
+      '  "mockInterview": "Mock interview with your trainer",',
       '  "counsellorCall": "Call your counsellor"',
       '}',
     ]);
@@ -80,6 +82,7 @@ void main() {
       '  "@@locale": "hi",',
       '  "resumeVideo": "वीडियो फिर से चलाएँ",',
       '  "askDoubt": "अपने ट्रेनर से सवाल पूछें",',
+      '  "mockInterview": "ट्रेनर के साथ मॉक इंटरव्यू",',
       '  "counsellorCall": "अपने काउंसलर को कॉल करें"',
       '}',
     ]);
@@ -157,6 +160,9 @@ void main() {
     "GoRoute(path: '/ai/doubts', builder: _screen),",
     'builder: (context, state) => const AIMockInterviewScreen(),',
     "GoRoute(path: 'cv_maker', builder: _screen),",
+    "GoRoute(path: '/doubts/ai', builder: _screen),",
+    "GoRoute(path: '/ask-ai', builder: _screen),",
+    "GoRoute(path: 'ai-tutor', builder: _screen),",
   ]) {
     test('the route `$route` fails', () {
       append('lib/router/app_router.dart', [route]);
@@ -185,7 +191,19 @@ void main() {
     expectFails('"profileTool": "Open the CV builder",');
   }, skip: !hasBash);
 
-  test('the Hindi ARB file is read too', () {
+  for (final text in [
+    'Ask AI your doubts',
+    'Build your resume',
+    'Create a CV',
+  ]) {
+    test('the ARB text "$text" fails', () {
+      message('careerTool', text);
+
+      expectFails('"careerTool": "$text",');
+    }, skip: !hasBash);
+  }
+
+  test('a key in the Hindi ARB file fails', () {
     write('lib/l10n/app_hi.arb', [
       '{',
       '  "@@locale": "hi",',
@@ -195,6 +213,27 @@ void main() {
 
     expectFails('lib/l10n/app_hi.arb:3 names');
   }, skip: !hasBash);
+
+  // Read as Hindi, not as Latin words: the nukta written either way, and
+  // chandrabindu or anusvara, are the same spelling.
+  for (final text in [
+    'एआई काउंसलर से बात करें',
+    'AI काउंसलर से बात करें',
+    'एआई से पूछें',
+    'एआई मॉक इंटरव्यू',
+    'डाउट सॉल्वर',
+    // ज plus a nukta, then ज़ as one precomposed letter.
+    'रिज\u093C्यूमे बिल्डर',
+    'रि\u095B्यूमे बिल्डर',
+    'रेज\u093C्यूमे बनाए\u0901',
+    'CV मेकर',
+  ]) {
+    test('the Hindi ARB text "$text" fails', () {
+      message('careerTool', text, locale: 'hi');
+
+      expectFails('lib/l10n/app_hi.arb:3 names an AI doubt solver');
+    }, skip: !hasBash);
+  }
 
   test('a project with nothing to read fails rather than passes', () {
     Directory('${project.path}/lib/router').deleteSync(recursive: true);

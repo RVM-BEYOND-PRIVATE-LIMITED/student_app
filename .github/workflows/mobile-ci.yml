@@ -42,8 +42,8 @@ jobs:
 
       # No AI doubt solver, AI counsellor, AI mock interview or resume
       # builder (student_app #9): fails when pubspec.yaml or pubspec.lock
-      # lists a generative-AI SDK, or a route in lib/router/ or a key or text
-      # in lib/l10n/*.arb names one of those features.
+      # lists a generative-AI SDK, or a route in lib/router/ or a key or an
+      # English or Hindi text in lib/l10n/*.arb names one of those features.
       - name: No AI features
         run: bash tool/no_ai_features.sh
 

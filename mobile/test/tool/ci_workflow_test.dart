@@ -44,15 +44,32 @@ void main() {
       ),
     );
     expect(check, greaterThan(android));
-    // No other step between the two.
-    expect(
-      '- name: '.allMatches(workflow.substring(android, check)),
-      hasLength(1),
-    );
+    // No other step between the two, named or not.
+    expect(stepsBetween(workflow, android, check), 1);
     expect(
       check,
       lessThan(step(r'Install Flutter ${{ env.FLUTTER_VERSION }}')),
     );
+  });
+
+  test('a step counts whether it has a name or not', () {
+    const steps =
+        '    steps:\n'
+        '      - name: A\n'
+        '        run: |\n'
+        '          echo "- not a step"\n'
+        '      - uses: actions/cache@v4\n'
+        '        with:\n'
+        '          path: |\n'
+        '            - not a step either\n'
+        '      - run: echo b\n'
+        '      - name: C\n'
+        '        run: echo c\n';
+    int at(String text) => steps.indexOf(text);
+
+    expect(stepsBetween(steps, at('- name: A'), at('- name: C')), 3);
+    expect(stepsBetween(steps, at('- uses:'), at('- name: C')), 2);
+    expect(stepsBetween(steps, at('- run:'), at('- name: C')), 1);
   });
 
   test('the release builds are the obfuscated App Bundle, universal APK and '
@@ -83,4 +100,16 @@ void main() {
     expect(report, contains('dart run tool/size_report.dart'));
     expect(report, contains(r'"$GITHUB_STEP_SUMMARY"'));
   });
+}
+
+/// How many steps of [workflow] start from the one at [from] up to [to]:
+/// every '- ' at the indent of the step at [from], whether a '- name:', a
+/// '- uses:' or a '- run:'.
+int stepsBetween(String workflow, int from, int to) {
+  final line = workflow.lastIndexOf('\n', from) + 1;
+  final indent = RegExp.escape(workflow.substring(line, from));
+  return RegExp(
+    '^$indent- ',
+    multiLine: true,
+  ).allMatches(workflow.substring(line, to)).length;
 }
