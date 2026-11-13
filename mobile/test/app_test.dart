@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:rvm_student/core/app_info.dart';
 import 'package:rvm_student/core/crash/crash_log.dart';
 import 'package:rvm_student/core/env/student_env.dart';
@@ -15,6 +16,7 @@ import 'package:rvm_student/features/update_required/update_required_screen.dart
 import 'package:rvm_student/features/welcome/welcome_screen.dart';
 import 'package:rvm_student/injection.dart';
 import 'package:rvm_student/l10n/l10n.dart';
+import 'package:rvm_student/router/app_router.dart';
 
 import 'support/app_harness.dart';
 import 'support/fakes.dart';
@@ -187,6 +189,25 @@ void main() {
       expect(find.byType(UpdateRequiredScreen), findsNothing);
     });
 
+    testWidgets('a build that cannot read its own version sends no '
+        'X-App-Version, so no server minimum refuses it', (tester) async {
+      final adapter = ScriptedAdapter((_, _) => jsonReply(200, {'ok': true}));
+      await AppHarness(
+        store: FakeSecureStore({LanguageStore.key: 'en'}),
+        httpAdapter: adapter,
+        appInfo: const AppInfo(
+          version: '0.0.0',
+          buildNumber: '0',
+          isKnown: false,
+        ),
+      ).launch(tester);
+
+      await _send(tester);
+
+      expect(adapter.seen.single.header('X-App-Version'), isNull);
+      expect(adapter.seen.single.header('User-Agent'), 'RVM-Student (Android)');
+    });
+
     testWidgets('this build publishes no minimum, so it opens', (tester) async {
       await AppHarness(
         store: FakeSecureStore({LanguageStore.key: 'en'}),
@@ -212,6 +233,74 @@ void main() {
 
       app.online.add(true);
       await tester.pumpAndSettle();
+      expect(find.byType(OfflineBar), findsNothing);
+    });
+
+    testWidgets('goes away once a check finds the internet again, with no '
+        'word from the network', (tester) async {
+      var reachable = false;
+      var checks = 0;
+      final app = AppHarness(
+        store: FakeSecureStore({LanguageStore.key: 'en'}),
+        connectivityCheck: () async {
+          checks++;
+          return reachable;
+        },
+      );
+      await app.launch(tester);
+      app.online.add(false);
+      await tester.pumpAndSettle();
+      expect(find.byType(OfflineBar), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(checks, 1);
+      expect(find.byType(OfflineBar), findsOneWidget, reason: 'still offline');
+
+      reachable = true;
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pumpAndSettle();
+      expect(checks, 2);
+      expect(find.byType(OfflineBar), findsNothing);
+    });
+
+    testWidgets('checks again when the app comes back to the foreground', (
+      tester,
+    ) async {
+      var reachable = false;
+      var checks = 0;
+      final app = AppHarness(
+        store: FakeSecureStore({LanguageStore.key: 'en'}),
+        connectivityCheck: () async {
+          checks++;
+          return reachable;
+        },
+      );
+      await app.launch(tester);
+      app.online.add(false);
+      await tester.pumpAndSettle();
+      expect(find.byType(OfflineBar), findsOneWidget);
+
+      // The student leaves the app and the network recovers meanwhile.
+      for (final state in [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      reachable = true;
+      expect(checks, 0);
+      for (final state in [
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      await tester.pumpAndSettle();
+
+      expect(checks, 1, reason: 'checked at once, not after the back-off');
       expect(find.byType(OfflineBar), findsNothing);
     });
   });
@@ -338,6 +427,42 @@ void main() {
       expect(find.byType(WelcomeScreen), findsOneWidget);
       expect(find.text(l10n.en.openDeveloperMenu), findsNothing);
     });
+
+    for (final (name, env) in [
+      (
+        'FLAVOR=prod',
+        StudentEnv.resolve(flavor: 'prod', host: 'https://api.example.test'),
+      ),
+      (
+        'a release build with no FLAVOR',
+        StudentEnv.resolve(
+          flavor: '',
+          host: 'https://api.example.test',
+          releaseMode: true,
+        ),
+      ),
+    ]) {
+      testWidgets('$name: the Developer menu cannot be reached, not even by '
+          'its address', (tester) async {
+        await AppHarness(
+          store: FakeSecureStore({LanguageStore.key: 'en'}),
+          env: env,
+        ).launch(tester);
+        expect(find.text(l10n.en.openDeveloperMenu), findsNothing);
+
+        for (final location in [
+          Routes.devMenu,
+          Routes.devStates,
+          Routes.devCrashLog,
+        ]) {
+          GoRouter.of(tester.element(find.byType(WelcomeScreen))).go(location);
+          await tester.pumpAndSettle();
+
+          expect(find.byType(DevMenuScreen), findsNothing, reason: location);
+          expect(find.byType(WelcomeScreen), findsOneWidget, reason: location);
+        }
+      });
+    }
   });
 }
 

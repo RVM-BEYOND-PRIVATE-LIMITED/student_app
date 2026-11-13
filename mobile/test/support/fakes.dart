@@ -23,6 +23,10 @@ class FakeSecureStore extends SecureStore {
   /// would.
   Completer<void>? holdReads;
 
+  /// Set to make writes and deletes wait until it completes, the way a slow
+  /// Keystore would.
+  Completer<void>? holdWrites;
+
   int reads = 0;
   int writes = 0;
 
@@ -37,12 +41,14 @@ class FakeSecureStore extends SecureStore {
   @override
   Future<void> write({required String key, required String value}) async {
     writes++;
+    if (holdWrites != null) await holdWrites!.future;
     if (failWrites != null) throw failWrites!;
     values[key] = value;
   }
 
   @override
   Future<void> delete({required String key}) async {
+    if (holdWrites != null) await holdWrites!.future;
     if (failWrites != null) throw failWrites!;
     values.remove(key);
   }

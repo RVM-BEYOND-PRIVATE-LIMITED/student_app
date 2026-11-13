@@ -33,6 +33,7 @@ class AppHarness {
     this.httpAdapter,
     this.appInfo = testAppInfo,
     this.deviceHints = const FakeDeviceHints(),
+    this.connectivityCheck,
   }) : store = store ?? FakeSecureStore(),
        env = env ?? StudentEnv.resolve(flavor: 'dev', host: ''),
        crashLog = crashLog ?? MemoryCrashLogStore();
@@ -53,6 +54,10 @@ class AppHarness {
   final DeviceHintsSource deviceHints;
 
   final StreamController<bool> online = StreamController<bool>.broadcast();
+
+  /// One check of the network, as `ConnectivityService.isOnline`. Without it
+  /// the banner follows [online] only.
+  final Future<bool> Function()? connectivityCheck;
 
   /// Launches the app and lets the launch checks finish.
   Future<void> launch(WidgetTester tester, {bool settle = true}) async {
@@ -77,6 +82,7 @@ class AppHarness {
       secureStore: store,
       crashLog: crashLog,
       connectivity: online.stream,
+      connectivityCheck: connectivityCheck,
       deviceLocales: deviceLocales,
       savedLanguage: saved,
       versionSource: versionSource,

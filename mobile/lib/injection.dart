@@ -21,7 +21,10 @@ final GetIt getIt = GetIt.instance;
 /// Wires the app once at launch. Tests call it with their own fakes.
 ///
 /// [connectivity] is the online/offline stream (core_network's
-/// `ConnectivityService.onStatusChanged()` in the app). [versionSource] is
+/// `ConnectivityService.onStatusChanged()` in the app) and
+/// [connectivityCheck] one check of it (`ConnectivityService.isOnline`),
+/// which lets the offline banner check again while it shows; without it the
+/// banner only follows the stream. [versionSource] is
 /// where the launch check reads the minimum version; until Scheduler_Backend
 /// #158 publishes one, nothing does. [httpAdapter] replaces the network in
 /// tests. [deviceHints] reads the phone's device hints (student_app #8,
@@ -32,6 +35,7 @@ void configureDependencies({
   required SecureStore secureStore,
   required CrashLogStore crashLog,
   required Stream<bool> connectivity,
+  Future<bool> Function()? connectivityCheck,
   required List<Locale> deviceLocales,
   AppLanguage? savedLanguage,
   VersionSource versionSource = const UnpublishedVersionSource(),
@@ -61,13 +65,16 @@ void configureDependencies({
         ),
       ),
     )
-    ..registerSingleton<ConnectivityBloc>(ConnectivityBloc(connectivity))
+    ..registerSingleton<ConnectivityBloc>(
+      ConnectivityBloc(connectivity, check: connectivityCheck),
+    )
     // The Student API client. Nothing calls it yet: its calls come with the
     // generated client once the contract is published (student_app #10).
     ..registerLazySingleton<Dio>(
       () => StudentDio.create(
         env: env,
-        appVersion: appInfo.version,
+        // An unknown build sends no version rather than a made-up one.
+        appVersion: appInfo.isKnown ? appInfo.version : null,
         languageTag: () => language.state.language.name,
         session: session,
         adapter: httpAdapter,

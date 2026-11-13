@@ -1,3 +1,4 @@
+import 'package:core_network/core_network.dart';
 import 'package:dio/dio.dart';
 
 import '../env/student_env.dart';
@@ -34,8 +35,11 @@ class HostBlocked implements Exception {
 ///   `STUDENT_API_HOST`, over http or https; any other host is refused;
 /// * a prod build sends https only: plain HTTP never leaves it.
 ///
-/// See [StudentEnv.allowsRequestTo] for the rule itself. A refused request
-/// ends with [HostBlocked] and nothing goes on the wire.
+/// See [StudentEnv.allowsRequestTo] for the rule itself. Nothing goes on the
+/// wire for a refused request. Its error passes through every interceptor
+/// after the guard, like any other error, so the caller gets a typed
+/// [Failure] (an [UnknownFailure] whose message names the refusal) and
+/// [refusalOf] tells which rule refused it.
 ///
 /// This is the only rule that covers the app's API traffic. dio sends it
 /// through `dart:io`'s `HttpClient`, and the Flutter 3.35.7 Android embedder
@@ -54,11 +58,21 @@ class HostGuard extends Interceptor {
 
   final StudentEnv env;
 
+  static const _blockedKey = 'student.host.blocked';
+
+  /// The [HostBlocked] that stopped [error]'s request, or null when the guard
+  /// let it through.
+  static HostBlocked? refusalOf(DioException error) {
+    final blocked = error.requestOptions.extra[_blockedKey];
+    return blocked is HostBlocked ? blocked : null;
+  }
+
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     options.followRedirects = false;
     final uri = options.uri;
     if (env.allowsRequestTo(uri)) {
+      options.extra.remove(_blockedKey);
       handler.next(options);
       return;
     }
@@ -67,12 +81,16 @@ class HostGuard extends Interceptor {
       host: uri.host,
       isDev: env.isDev,
     );
+    options.extra[_blockedKey] = blocked;
     handler.reject(
       DioException(
         requestOptions: options,
-        error: blocked,
+        error: UnknownFailure(blocked.toString()),
         message: blocked.toString(),
       ),
+      // The following error interceptors run too (logging, then
+      // ErrorMappingInterceptor), as for every other error.
+      true,
     );
   }
 }

@@ -38,11 +38,16 @@ class NoSessionRenewer implements SessionRenewer {
 ///   `Accept-Language` as the first attempt.
 /// * A request marked with [skipAuthKey] (a sign-in step) carries no token,
 ///   and its 401 is about what it sent, so it never touches the session.
+/// * The token goes only to the Student API itself: a request whose scheme,
+///   host and port differ from [apiBaseUrl]'s (an absolute URL to any other
+///   address) carries no token, and its 401 is passed on as it is, never
+///   renewed or sent again with the token.
 ///
 /// Until the Student API's error contract exists (student_app #10), every 401
 /// on an authenticated request counts as a refused token.
 class StudentAuthInterceptor extends Interceptor {
   StudentAuthInterceptor({
+    required this.apiBaseUrl,
     required StudentSession session,
     required Dio replayDio,
     SessionRenewer renewer = const NoSessionRenewer(),
@@ -50,6 +55,10 @@ class StudentAuthInterceptor extends Interceptor {
   }) : _session = session,
        _replayDio = replayDio,
        _renewer = renewer;
+
+  /// The Student API's address (`StudentEnv.apiBaseUrl`). Only requests to
+  /// this scheme, host and port carry the session's token.
+  final Uri apiBaseUrl;
 
   final StudentSession _session;
   final Dio _replayDio;
@@ -74,7 +83,7 @@ class StudentAuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    if (options.extra[skipAuthKey] != true) {
+    if (options.extra[skipAuthKey] != true && _isStudentApi(options.uri)) {
       final token = await _currentToken();
       if (token != null) options.headers['Authorization'] = 'Bearer $token';
     }
@@ -90,7 +99,8 @@ class StudentAuthInterceptor extends Interceptor {
     final sent = options.headers['Authorization'];
     if (err.response?.statusCode != 401 ||
         options.extra[skipAuthKey] == true ||
-        sent == null) {
+        sent == null ||
+        !_isStudentApi(options.uri)) {
       handler.next(err);
       return;
     }
@@ -116,6 +126,12 @@ class StudentAuthInterceptor extends Interceptor {
       }
     }
 
+    // Checked again: the request may have changed while the session renewed,
+    // and the token must never be sent anywhere else.
+    if (!_isStudentApi(options.uri)) {
+      handler.next(err);
+      return;
+    }
     options
       ..extra[_retriedKey] = true
       ..headers['Authorization'] = 'Bearer $token';
@@ -126,6 +142,14 @@ class StudentAuthInterceptor extends Interceptor {
       handler.next(e);
     }
   }
+
+  /// True when [uri] is on the Student API's own origin: the same scheme,
+  /// host and port as [apiBaseUrl]. A port left out counts as the scheme's
+  /// default (80 for http, 443 for https).
+  bool _isStudentApi(Uri uri) =>
+      uri.scheme.toLowerCase() == apiBaseUrl.scheme.toLowerCase() &&
+      uri.host.toLowerCase() == apiBaseUrl.host.toLowerCase() &&
+      uri.port == apiBaseUrl.port;
 
   /// One renewal at a time: a request that arrives while one runs waits for
   /// it instead of starting its own.

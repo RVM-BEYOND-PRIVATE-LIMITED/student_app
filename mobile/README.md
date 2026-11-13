@@ -83,7 +83,7 @@ flutter run              # dev build, Student API on this computer
 
 | Define | Values | Default |
 | --- | --- | --- |
-| `FLAVOR` | `dev`, `prod` | `dev` |
+| `FLAVOR` | `dev`, `prod` | `prod` in a release build, `dev` otherwise |
 | `STUDENT_API_HOST` | the Student API's base address | none |
 
 - **dev with no host** sends every request to `http://127.0.0.1:3000`, this
@@ -95,9 +95,10 @@ flutter run              # dev build, Student API on this computer
 - **prod** needs an `https://` host. A prod build made without one does not
   start: it shows a short message and makes no request. No production
   address is written in the code; the release pipeline will pass it once the
-  host exists (student_app #20). A release build made without
-  `--dart-define=FLAVOR=prod` is a dev build (the CI size build is one), so
-  the release pipeline must pass it.
+  host exists (student_app #20). A release build made without `FLAVOR` is a
+  prod build, so it never has the Developer menu or the loopback host; with
+  no host either (the CI size build is one) it shows that short message.
+  Only `--dart-define=FLAVOR=dev` makes a dev release build.
 
 #### Which addresses a build may reach
 
@@ -113,6 +114,9 @@ after renewal included), in every flavor and build mode, by `HostGuard`
 
 - Redirects are never followed: `dart:io` follows them below the guard, so
   a 3xx reaches the app as an error instead.
+- A refused request becomes a typed `Failure`, like every other error.
+- The session's token rides only on requests to the Student API's own
+  scheme, host and port; a request to any other address carries none.
 - Android's network security config does **not** limit this traffic. dio
   sends it through `dart:io`, and the Flutter 3.35.7 Android embedder does
   not apply the config to Dart sockets: it reads a policy only from an
@@ -138,7 +142,9 @@ minimum version.
 - Request logging (`LoggingInterceptor`) runs in debug builds only; a
   release build logs no request.
 - Uncaught errors (Flutter, platform dispatcher, zone) are cleaned of phone
-  numbers, OTPs, tokens, names and email addresses
+  numbers, OTPs, tokens, email addresses, and names under name keys (such
+  as `"full_name": "…"` or `name=…`; a name in free text cannot be
+  recognised, so it stays)
   (`lib/core/redact/student_redact.dart`)
   and kept on the phone only, in the app's private storage, out of backups.
   The Developer menu shows them. Sending crash reports off the phone is

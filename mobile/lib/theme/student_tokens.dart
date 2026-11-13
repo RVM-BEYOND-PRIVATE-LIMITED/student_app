@@ -19,6 +19,16 @@ abstract final class StudentColors {
     Color(0xFF0E1834),
   ];
 
+  /// The Welcome header's linear gradient, top left to bottom right: the
+  /// splash's first two steps.
+  static const headerGradient = [Color(0xFF25396B), Color(0xFF1A2B53)];
+
+  /// The faint grid drawn over the navy header (white at about 6 %).
+  static const headerGrid = Color(0x0FFFFFFF);
+
+  /// The fill of a chosen option, such as the selected language.
+  static const accentTint = Color(0xFFFFF7ED);
+
   // Meaning.
   static const success = Color(0xFF16A34A);
   static const warning = Color(0xFFF59E0B);

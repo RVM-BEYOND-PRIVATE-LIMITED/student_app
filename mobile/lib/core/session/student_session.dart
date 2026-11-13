@@ -30,45 +30,62 @@ class StudentSession {
 
   String? _accessToken;
   String? _refreshToken;
-  Future<void>? _loading;
+
+  /// True once the tokens in memory are the session's: read from the store,
+  /// saved, or ended.
+  bool _tokensLoaded = false;
   Future<String>? _installId;
+
+  /// The tail of the queue that runs [load], the token reads, [saveTokens]
+  /// and [endSession] one at a time, in the order they were called. Without
+  /// it a load still reading the store could put back a token that an
+  /// [endSession] called meanwhile had just cleared, and a save and an end
+  /// that overlap could leave one token of each in the store.
+  Future<void> _queue = Future<void>.value();
+
+  /// Runs [action] once every operation called before it has finished.
+  Future<T> _serialized<T>(Future<T> Function() action) {
+    final run = _queue.then((_) => action());
+    // A failed operation does not hold up the ones after it.
+    _queue = run.then<void>((_) {}, onError: (Object _) {});
+    return run;
+  }
 
   /// Reads the session into memory, so later reads cost nothing, and makes
   /// the install id if this phone has none yet. Safe to call more than once.
-  Future<void> load() async {
-    final pending = _loading ??= _load();
-    try {
-      await pending;
-    } catch (_) {
-      // A failed read is tried again on the next call.
-      if (identical(_loading, pending)) _loading = null;
-      rethrow;
-    }
-  }
+  Future<void> load() => _serialized(_loadOnce);
 
-  Future<void> _load() async {
-    _accessToken = _nonEmpty(await _store.read(key: accessTokenKey));
-    _refreshToken = _nonEmpty(await _store.read(key: refreshTokenKey));
+  /// The body of [load]; runs only inside [_serialized].
+  Future<void> _loadOnce() async {
+    // A failed read leaves [_tokensLoaded] false, so the next call tries
+    // again.
+    if (!_tokensLoaded) {
+      final access = _nonEmpty(await _store.read(key: accessTokenKey));
+      final refresh = _nonEmpty(await _store.read(key: refreshTokenKey));
+      _accessToken = access;
+      _refreshToken = refresh;
+      _tokensLoaded = true;
+    }
     await installId();
   }
 
   /// The access token, or null when the student is signed out.
-  Future<String?> accessToken() async {
-    await load();
+  Future<String?> accessToken() => _serialized(() async {
+    await _loadOnce();
     return _accessToken;
-  }
+  });
 
   /// The refresh token, or null when there is no session to renew.
-  Future<String?> refreshToken() async {
-    await load();
+  Future<String?> refreshToken() => _serialized(() async {
+    await _loadOnce();
     return _refreshToken;
-  }
+  });
 
   /// True when a session was restored or saved and has not ended.
-  Future<bool> hasSession() async {
-    await load();
+  Future<bool> hasSession() => _serialized(() async {
+    await _loadOnce();
     return _accessToken != null || _refreshToken != null;
-  }
+  });
 
   /// This install's id: a random version 4 UUID, made once.
   Future<String> installId() async {
@@ -87,21 +104,24 @@ class StudentSession {
   Future<void> saveTokens({
     required String accessToken,
     required String refreshToken,
-  }) async {
-    await load();
+  }) => _serialized(() async {
+    await _loadOnce();
     await _store.write(key: accessTokenKey, value: accessToken);
     await _store.write(key: refreshTokenKey, value: refreshToken);
     _accessToken = _nonEmpty(accessToken);
     _refreshToken = _nonEmpty(refreshToken);
-  }
+    _tokensLoaded = true;
+  });
 
-  /// Ends the session: both tokens go, the install id stays.
-  Future<void> endSession() async {
+  /// Ends the session: both tokens go, the install id stays. The session is
+  /// over for this run even if the store fails to delete them.
+  Future<void> endSession() => _serialized(() async {
     _accessToken = null;
     _refreshToken = null;
+    _tokensLoaded = true;
     await _store.delete(key: accessTokenKey);
     await _store.delete(key: refreshTokenKey);
-  }
+  });
 
   Future<String> _readOrMakeInstallId() async {
     final saved = _nonEmpty(await _store.read(key: installIdKey));

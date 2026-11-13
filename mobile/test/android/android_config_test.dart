@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -61,7 +62,21 @@ void main() {
   group('the Android project (item 1)', () {
     test('application id and name are the development defaults', () {
       expect(read(buildFile), contains('applicationId = "com.rvm.rvmstudent"'));
-      expect(read(mainManifest), contains('android:label="RVM Student"'));
+      expect(read(mainManifest), contains('android:label="@string/app_name"'));
+    });
+
+    test('the launcher label is in English and in Hindi, the same words as '
+        'the app title', () {
+      String label(String values) => RegExp(
+        r'<string name="app_name">([^<]+)</string>',
+      ).firstMatch(read('android/app/src/main/res/$values/strings.xml'))![1]!;
+      String title(String arb) =>
+          (jsonDecode(read('lib/l10n/$arb')) as Map)['appTitle'] as String;
+
+      expect(label('values'), 'RVM Student');
+      expect(label('values'), title('app_en.arb'));
+      expect(label('values-hi'), 'RVM स्टूडेंट');
+      expect(label('values-hi'), title('app_hi.arb'));
     });
 
     test('release builds carry no signing key unless CI measures size', () {

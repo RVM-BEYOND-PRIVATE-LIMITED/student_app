@@ -34,6 +34,7 @@ void main() {
     }
 
     final secureStore = SecureStore();
+    final connectivity = ConnectivityService();
     final appInfo = await AppInfo.load();
     // The saved language is read before the first frame, so the app never
     // flashes in the wrong language. A store that does not answer in time is
@@ -47,7 +48,8 @@ void main() {
       appInfo: appInfo,
       secureStore: secureStore,
       crashLog: CrashLog.store,
-      connectivity: ConnectivityService().onStatusChanged(),
+      connectivity: connectivity.onStatusChanged(),
+      connectivityCheck: () => connectivity.isOnline,
       deviceLocales: PlatformDispatcher.instance.locales,
       savedLanguage: savedLanguage,
     );

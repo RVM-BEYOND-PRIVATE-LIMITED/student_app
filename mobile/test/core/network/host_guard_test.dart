@@ -69,7 +69,11 @@ void main() {
     await expectLater(
       realClient(prod).get<dynamic>(server.url),
       throwsA(
-        isA<DioException>().having((e) => e.error, 'error', isA<HostBlocked>()),
+        isA<DioException>().having(
+          HostGuard.refusalOf,
+          'refusal',
+          isA<HostBlocked>(),
+        ),
       ),
     );
     expect(server.connections, 0, reason: 'no TCP connection was opened');
