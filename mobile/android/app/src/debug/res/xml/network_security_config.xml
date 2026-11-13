@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only. This governs Android's own network stack (Java and
+     Kotlin code, such as a plugin's native HTTP or a WebView): there it lets
+     plain HTTP reach this computer (127.0.0.1 or localhost through
+     `adb reverse`, or 10.0.2.2 from the emulator) and nothing else.
+
+     It does NOT cover the app's Student API traffic. dio sends that through
+     dart:io, and the Flutter 3.35.7 Android embedder does not apply this file
+     to Dart sockets (it reads a policy only from an io.flutter.network-policy
+     meta-data entry, which this app does not declare, and otherwise lets Dart
+     connect insecurely to any host). The rule for that traffic is enforced in
+     Dart, in every build: lib/core/network/host_guard.dart. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

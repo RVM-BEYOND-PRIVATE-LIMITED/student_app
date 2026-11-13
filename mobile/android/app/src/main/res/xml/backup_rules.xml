@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and older read these rules (student_app #1, item 5; the same
+     rules as the Team app). flutter_secure_storage keeps its ciphertext in
+     these SharedPreferences files while the key that decrypts them lives in
+     the non-exportable Android Keystore. Backing up the ciphertext restores
+     data that a reinstall or a new phone can never decrypt. The on-device
+     crash log (lib/app_crash.dart) is not backed up either. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+    <exclude domain="sharedpref" path="FlutterSecureKeyStorage.xml" />
+    <exclude domain="file" path="rvm_crash_log/" />
+</full-backup-content>

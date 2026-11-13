@@ -1,0 +1,23 @@
+# gen-l10n (student_app #1, item 8). Runs during `flutter pub get` because
+# pubspec.yaml sets `flutter: generate: true`.
+#
+# English is the template: every key exists in app_en.arb first, and
+# app_hi.arb must carry the same keys.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+
+# Machine output in its own folder, next to the hand-written ARB files and
+# never edited. It is not committed (mobile/.gitignore).
+output-dir: lib/l10n/gen
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+
+# AppLocalizations.of(context) never returns null: the delegates are always
+# installed on the one MaterialApp (lib/app.dart).
+nullable-getter: false
+
+# Every run lists the keys a language is missing here, `{}` when none is.
+# gen-l10n itself only warns and shows English in their place, so CI
+# (.github/workflows/mobile-ci.yml) fails the build when this file is not
+# `{}`: no Hindi screen may fall back to English.
+untranslated-messages-file: build/untranslated_messages.json

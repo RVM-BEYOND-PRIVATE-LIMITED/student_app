@@ -1,0 +1,126 @@
+name: mobile-ci
+
+# The student app in mobile/ (student_app #1, item 13).
+#
+# Runs on every pull request that touches mobile/, whatever branch it
+# targets. It never runs on a push, never signs a release with a real key
+# and never uploads an APK: the release build below exists only to measure
+# its size.
+on:
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  # The one Flutter version the app is built with (mobile/README.md).
+  FLUTTER_VERSION: '3.35.7'
+
+jobs:
+  mobile:
+    # Golden images are made on Linux; keep the runner's OS fixed.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      # Flutter comes from its own repository at the release tag: no
+      # third-party setup action.
+      - name: Install Flutter ${{ env.FLUTTER_VERSION }}
+        working-directory: .
+        run: |
+          git clone --depth 1 --branch "$FLUTTER_VERSION" \
+            https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          # The Android build needs JDK 17, which the runner image carries.
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+
+      - name: Check the Flutter version
+        run: |
+          flutter config --no-analytics
+          flutter --version
+          flutter --version --machine \
+            | grep -q "\"frameworkVersion\": \"$FLUTTER_VERSION\""
+
+      - name: Get packages
+        run: flutter pub get
+
+      # gen-l10n lists every key a language lacks in
+      # build/untranslated_messages.json (l10n.yaml). Any entry fails the
+      # build: a Hindi screen must never fall back to English. A key that
+      # exists only in Hindi fails it too.
+      - name: Missing translations
+        run: |
+          flutter gen-l10n
+          report=build/untranslated_messages.json
+          test -f "$report"
+          if [ "$(tr -d '[:space:]' < "$report")" != "{}" ]; then
+            echo "::error file=mobile/lib/l10n/app_hi.arb::Untranslated messages (see below)"
+            cat "$report"
+            exit 1
+          fi
+          keys() { jq -r 'keys[] | select(startswith("@") | not)' "$1" | sort; }
+          if ! diff <(keys lib/l10n/app_en.arb) <(keys lib/l10n/app_hi.arb); then
+            echo "::error file=mobile/lib/l10n/app_hi.arb::app_en.arb and app_hi.arb must hold the same keys"
+            exit 1
+          fi
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test --exclude-tags golden
+
+      # Golden images of the shared states in English, Hindi and the
+      # long-text pseudo-locale (student_app #11), drawn with the bundled
+      # fonts. Remake them on Linux with
+      #   flutter test --tags golden --update-goldens
+      - name: Golden tests
+        run: flutter test --tags golden
+
+      - name: Keep the golden differences
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-failures
+          path: mobile/test/goldens/failures/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # For size only. There is no release key in this repository: the
+      # signing key and the application id are permanent choices made under
+      # student_app #20. RVM_CI_SIZE_REPORT signs this build with the
+      # runner's throwaway debug key (android/app/build.gradle.kts); the APKs
+      # are measured, then deleted with the runner.
+      - name: Release build (size only)
+        env:
+          RVM_CI_SIZE_REPORT: 'true'
+        run: flutter build apk --release --split-per-abi
+
+      # A report, not a gate: no size budget is agreed yet (student_app #13).
+      - name: APK size report
+        run: |
+          {
+            echo "### Student app APK size (release, split per ABI)"
+            echo
+            echo "| APK | Bytes | MiB |"
+            echo "| --- | ---: | ---: |"
+            for apk in build/app/outputs/flutter-apk/app-*-release.apk; do
+              bytes=$(stat -c %s "$apk")
+              mib=$(awk -v b="$bytes" 'BEGIN { printf "%.2f", b / 1048576 }')
+              echo "| $(basename "$apk") | $bytes | $mib |"
+            done
+            echo
+            echo "Report only: no size budget is set (student_app #13)."
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$GITHUB_STEP_SUMMARY"

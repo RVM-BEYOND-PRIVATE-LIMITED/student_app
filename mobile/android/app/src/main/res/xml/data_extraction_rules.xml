@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ reads these rules instead of full-backup-content (student_app
+     #1, item 5; the same rules as the Team app). The flutter_secure_storage
+     files hold the session tokens, the install id and the language choice as
+     ciphertext whose key never leaves the Android Keystore, so they are kept
+     out of cloud backup and device transfer: restored without the key they
+     could never be decrypted. The install id must also stay with this install.
+     The on-device crash log (lib/app_crash.dart) stays on this phone too. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureKeyStorage.xml" />
+        <exclude domain="file" path="rvm_crash_log/" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureKeyStorage.xml" />
+        <exclude domain="file" path="rvm_crash_log/" />
+    </device-transfer>
+</data-extraction-rules>
