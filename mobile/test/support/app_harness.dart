@@ -7,6 +7,7 @@ import 'package:rvm_student/app.dart';
 import 'package:rvm_student/core/app_info.dart';
 import 'package:rvm_student/core/crash/crash_log.dart';
 import 'package:rvm_student/core/env/student_env.dart';
+import 'package:rvm_student/core/security/device_hints.dart';
 import 'package:rvm_student/core/version/version_gate.dart';
 import 'package:rvm_student/features/language/language_store.dart';
 import 'package:rvm_student/features/startup/bloc/startup_bloc.dart';
@@ -31,6 +32,7 @@ class AppHarness {
     CrashLogStore? crashLog,
     this.httpAdapter,
     this.appInfo = testAppInfo,
+    this.deviceHints = const FakeDeviceHints(),
     this.connectivityCheck,
   }) : store = store ?? FakeSecureStore(),
        env = env ?? StudentEnv.resolve(flavor: 'dev', host: ''),
@@ -47,6 +49,9 @@ class AppHarness {
 
   /// The installed build, as Android reports it.
   final AppInfo appInfo;
+
+  /// The phone's device hints (student_app #8, item 2).
+  final DeviceHintsSource deviceHints;
 
   final StreamController<bool> online = StreamController<bool>.broadcast();
 
@@ -82,6 +87,7 @@ class AppHarness {
       savedLanguage: saved,
       versionSource: versionSource,
       httpAdapter: httpAdapter,
+      deviceHints: deviceHints,
     );
     getIt<StartupBloc>().add(const StartupStarted());
     await tester.pumpWidget(const StudentApp());

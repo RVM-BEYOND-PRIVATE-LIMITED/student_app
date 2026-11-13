@@ -6,14 +6,24 @@
          ciphertext in SharedPreferences while the key that decrypts it stays
          in the Android Keystore. The rules below keep that ciphertext, and the
          on-device crash log, out of cloud backup and device transfer, so a
-         restore never brings back data the phone can no longer decrypt. -->
+         restore never brings back data the phone can no longer decrypt.
+
+         No cleartext traffic (student_app #8, item 5): Android's own network
+         stack refuses plain HTTP. The debug build's network security config
+         (src/debug) takes precedence and lets it reach this computer only.
+         The Student API's Dart traffic is held to HTTPS in a prod build by
+         lib/core/network/host_guard.dart, not by this attribute. -->
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_rules"
-        android:dataExtractionRules="@xml/data_extraction_rules">
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:usesCleartextTraffic="false">
+        <!-- Exported: the launcher activity only (student_app #8, item 5).
+             Every other component in the merged manifest is checked by
+             tool/check_release.dart. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -36,6 +46,12 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- The flavor this build runs as, dev or prod (android/app/build.gradle.kts,
+             from the FLAVOR dart-define). Nothing reads it at run time:
+             tool/check_release.dart fails a release build that is not prod. -->
+        <meta-data
+            android:name="com.rvm.rvmstudent.FLAVOR"
+            android:value="${studentFlavor}" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

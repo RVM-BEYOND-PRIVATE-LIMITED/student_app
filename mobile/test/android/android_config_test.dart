@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../tool/check_release.dart' show flavorMetaData;
+
 /// The Android settings this issue relies on, read from the project files
 /// (`flutter test` runs in the package folder).
 void main() {
@@ -112,7 +114,12 @@ void main() {
     // real sockets in test/core/network/host_guard_test.dart.
     test('Android\'s own network stack (not Dart): plain HTTP only to this '
         'computer, only in debug builds', () {
-      expect(read(mainManifest), isNot(contains('usesCleartextTraffic')));
+      // Off everywhere (student_app #8, item 5); the debug build's network
+      // security config takes precedence over the attribute.
+      expect(
+        read(mainManifest),
+        contains('android:usesCleartextTraffic="false"'),
+      );
       expect(read(mainManifest), isNot(contains('networkSecurityConfig')));
       expect(read(debugManifest), contains('@xml/network_security_config'));
 
@@ -127,6 +134,184 @@ void main() {
       };
       expect(domains, {'127.0.0.1', 'localhost', '10.0.2.2'});
       expect(config, isNot(contains('<base-config')));
+    });
+  });
+
+  group('release hardening (student_app #8, item 5)', () {
+    /// The `release { ... }` block of the build file.
+    String releaseBlock() {
+      final gradle = read(buildFile);
+      final start = gradle.indexOf('release {');
+      expect(start, isNot(-1));
+      var depth = 0;
+      for (var i = start; i < gradle.length; i++) {
+        if (gradle[i] == '{') depth++;
+        if (gradle[i] == '}' && --depth == 0) {
+          return gradle.substring(start, i + 1);
+        }
+      }
+      fail('the release block does not close');
+    }
+
+    test('R8 code and resource shrinking are pinned on for release', () {
+      final release = releaseBlock();
+
+      expect(release, contains('isMinifyEnabled = true'));
+      expect(release, contains('isShrinkResources = true'));
+      expect(read(buildFile), isNot(contains('isMinifyEnabled = false')));
+    });
+
+    test('the target API level is Flutter\'s default, not a pinned number', () {
+      expect(read(buildFile), contains('targetSdk = flutter.targetSdkVersion'));
+      expect(read(buildFile), isNot(contains(RegExp(r'targetSdk\s*=\s*\d'))));
+    });
+
+    test('every component in the manifest says whether it is exported', () {
+      final manifest = read(mainManifest);
+      final components = RegExp(
+        r'<(activity|activity-alias|service|receiver|provider)\b[^>]*>',
+      ).allMatches(manifest).toList();
+
+      expect(components, isNotEmpty);
+      for (final c in components) {
+        expect(c[0], contains('android:exported='), reason: c[0]);
+      }
+      // The launcher activity is the only one exported on purpose.
+      expect(
+        RegExp('android:exported="true"').allMatches(manifest),
+        hasLength(1),
+      );
+    });
+
+    test('release builds are prod, obfuscated, and keep their symbol files '
+        'and obfuscation maps', () {
+      final script = read('tool/build_release.sh');
+
+      for (final build in [
+        'build appbundle mapping.txt appbundle',
+        // The universal APK: the pilot build (README, "Version codes").
+        'build apk mapping.txt apk\n',
+        // Each per-ABI APK is its own Gradle build and R8 run, so it keeps
+        // its own R8 mapping: one per ABI, none overwritten.
+        'build apk-per-abi "mapping.\$dart_abi.txt" \\\n'
+            '    apk --split-per-abi --target-platform "\$dart_abi"',
+      ]) {
+        expect(script, contains(build), reason: build);
+      }
+      expect(script, contains('--obfuscate'));
+      expect(script, contains(r'--split-debug-info="$out"'));
+      expect(script, contains('--dart-define=FLAVOR=prod'));
+      expect(script, contains(r'cp "$mapping" "$out/$kept"'));
+      // One Dart obfuscation map per ABI, kept for every build once its
+      // libapp.so is shown to be the same.
+      expect(
+        script,
+        contains(
+          '--extra-gen-snapshot-options=--save-obfuscation-map='
+          r'"$PWD/$symbols/apk-per-abi/app.$dart_abi.obfuscation.map.json"',
+        ),
+      );
+      expect(script, contains(r'cp "$map" "$symbols/$name/"'));
+      // Symbol files and maps never enter git (mobile/.gitignore).
+      expect(read('.gitignore'), contains('app.*.symbols'));
+      expect(read('.gitignore'), contains('app.*.map.json'));
+      expect(read('.gitignore'), contains('/build/'));
+    });
+
+    test('a release build refuses any FLAVOR but prod, before building', () {
+      // A stand-in for flutter on PATH: if the script ever got as far as
+      // `flutter clean`, the stand-in fails and nothing is cleaned or built.
+      final bin = Directory.systemTemp.createTempSync('rvm_no_flutter_');
+      addTearDown(() => bin.deleteSync(recursive: true));
+      File(
+        '${bin.path}/flutter',
+      ).writeAsStringSync('#!/bin/sh\necho reached flutter >&2\nexit 99\n');
+      Process.runSync('chmod', ['+x', '${bin.path}/flutter']);
+
+      for (final args in [
+        ['--dart-define=FLAVOR=dev'],
+        ['--dart-define', 'FLAVOR=Dev'],
+        ['--dart-define=FLAVOR=DEV'],
+        ['--dart-define=FLAVOR='],
+        ['--dart-define=FLAVOR=prod', '--dart-define=FLAVOR=dev'],
+      ]) {
+        final result = Process.runSync(
+          'bash',
+          ['tool/build_release.sh', ...args],
+          environment: {'PATH': '${bin.path}:/usr/bin:/bin'},
+          includeParentEnvironment: false,
+        );
+
+        expect(result.exitCode, 64, reason: '$args');
+        expect(
+          result.stderr,
+          contains('release builds are prod builds'),
+          reason: '$args',
+        );
+        expect(result.stderr, isNot(contains('reached flutter')));
+      }
+    });
+
+    test('the FLAVOR guard reads prod in any case, as Dart and Gradle do', () {
+      // The same stand-in: an accepted FLAVOR gets as far as `flutter clean`.
+      final bin = Directory.systemTemp.createTempSync('rvm_no_flutter_');
+      addTearDown(() => bin.deleteSync(recursive: true));
+      File(
+        '${bin.path}/flutter',
+      ).writeAsStringSync('#!/bin/sh\necho reached flutter >&2\nexit 99\n');
+      Process.runSync('chmod', ['+x', '${bin.path}/flutter']);
+
+      for (final args in [
+        ['--dart-define=FLAVOR=prod'],
+        ['--dart-define=FLAVOR=Prod'],
+        ['--dart-define', 'FLAVOR=PROD'],
+        ['--dart-define=FLAVOR= prod '],
+      ]) {
+        final result = Process.runSync(
+          'bash',
+          ['tool/build_release.sh', ...args],
+          environment: {'PATH': '${bin.path}:/usr/bin:/bin'},
+          includeParentEnvironment: false,
+        );
+
+        expect(result.exitCode, 99, reason: '$args');
+        expect(result.stderr, contains('reached flutter'), reason: '$args');
+        expect(
+          result.stderr,
+          isNot(contains('release builds are prod builds')),
+          reason: '$args',
+        );
+      }
+    });
+
+    test('the build records its flavor in the manifest for the release '
+        'check (check 7)', () {
+      final gradle = read(buildFile);
+
+      // The FLAVOR dart-define as Dart reads it: the last one, trimmed and
+      // lower-cased.
+      expect(gradle, contains('project.findProperty("dart-defines")'));
+      expect(gradle, contains('.lastOrNull { it.startsWith("FLAVOR=") }'));
+      expect(gradle, contains('?.lowercase()'));
+      // With no FLAVOR, a release build is prod and any other build dev, as
+      // StudentEnv.resolve decides.
+      expect(
+        gradle,
+        contains(
+          'manifestPlaceholders["studentFlavor"] = '
+          'dartFlavor.ifEmpty { "dev" }',
+        ),
+      );
+      expect(
+        releaseBlock(),
+        contains(
+          'manifestPlaceholders["studentFlavor"] = '
+          'dartFlavor.ifEmpty { "prod" }',
+        ),
+      );
+      final manifest = read(mainManifest);
+      expect(manifest, contains('android:name="$flavorMetaData"'));
+      expect(manifest, contains(r'android:value="${studentFlavor}"'));
     });
   });
 }

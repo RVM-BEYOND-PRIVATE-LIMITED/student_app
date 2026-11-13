@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/dev_menu/capture_guard_screen.dart';
 import '../features/dev_menu/crash_log_screen.dart';
 import '../features/dev_menu/dev_menu_screen.dart';
 import '../features/dev_menu/states_gallery_screen.dart';
@@ -19,6 +20,7 @@ abstract final class Routes {
   static const devMenu = '/dev';
   static const devStates = '/dev/states';
   static const devCrashLog = '/dev/crash-log';
+  static const devCaptureGuard = '/dev/capture-guard';
 }
 
 /// Where the app must be, given the launch state (student_app #1):
@@ -93,6 +95,10 @@ GoRouter createRouter({
           GoRoute(
             path: 'crash-log',
             builder: (context, state) => const CrashLogScreen(),
+          ),
+          GoRoute(
+            path: 'capture-guard',
+            builder: (context, state) => const CaptureGuardScreen(),
           ),
         ],
       ),

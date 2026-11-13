@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/app_info.dart';
 import '../../core/crash/crash_log.dart';
 import '../../core/env/student_env.dart';
+import '../../core/security/device_hints.dart';
 import '../../core/session/student_session.dart';
 import '../../l10n/l10n.dart';
 import '../../router/app_router.dart';
@@ -22,28 +23,36 @@ class DevMenuInfo extends Equatable {
     required this.installId,
     required this.signedIn,
     required this.crashCount,
+    this.hints = DeviceHints.unknown,
   });
 
   final String installId;
   final bool signedIn;
   final int crashCount;
 
+  /// The phone's device hints (student_app #8, item 2), shown for checking
+  /// on a phone. They decide nothing.
+  final DeviceHints hints;
+
   static Future<DevMenuInfo> read(
     StudentSession session,
     CrashLogStore crashLog,
+    DeviceHintsSource deviceHints,
   ) async => DevMenuInfo(
     installId: await session.installId(),
     signedIn: await session.hasSession(),
     crashCount: (await crashLog.read()).length,
+    hints: await deviceHints.read(),
   );
 
   @override
-  List<Object?> get props => [installId, signedIn, crashCount];
+  List<Object?> get props => [installId, signedIn, crashCount, hints];
 }
 
 /// The Developer menu (student_app #1), in dev builds only: what this build
 /// talks to, what the server does not publish yet, the session, the
-/// language, and the diagnostics (shared states, the on-device crash log).
+/// language, the phone's device hints, and the diagnostics (shared states,
+/// the capture guard test, the on-device crash log).
 class DevMenuScreen extends StatelessWidget {
   const DevMenuScreen({super.key});
 
@@ -51,10 +60,11 @@ class DevMenuScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final session = context.read<StudentSession>();
     final crashLog = context.read<CrashLogStore>();
+    final deviceHints = context.read<DeviceHintsSource>();
     return BlocProvider(
-      create: (_) =>
-          LoadBloc<DevMenuInfo>(() => DevMenuInfo.read(session, crashLog))
-            ..add(const LoadRequested()),
+      create: (_) => LoadBloc<DevMenuInfo>(
+        () => DevMenuInfo.read(session, crashLog, deviceHints),
+      )..add(const LoadRequested()),
       child: const _DevMenuView(),
     );
   }
@@ -65,6 +75,9 @@ class _DevMenuView extends StatelessWidget {
 
   /// The issue that will publish what the menu cannot show yet.
   static const _waitsFor = 'Scheduler_Backend #158';
+
+  /// Where the server decides what the device hints only explain.
+  static const _hintsDecidedBy = 'Scheduler_Backend #159, #192';
 
   @override
   Widget build(BuildContext context) {
@@ -135,6 +148,27 @@ class _DevMenuView extends StatelessWidget {
                 ],
               ),
               _Section(
+                title: l10n.devSectionDevice,
+                children: [
+                  for (final (label, value) in [
+                    (l10n.devHintRooted, info?.hints.rootSuspected),
+                    (l10n.devHintEmulator, info?.hints.emulator),
+                    (l10n.devHintDebugger, info?.hints.debuggerAttached),
+                  ])
+                    _InfoRow(
+                      label: label,
+                      value: info == null
+                          ? const ShimmerBox(width: 60, height: 14)
+                          : Text(switch (value) {
+                              true => l10n.devYes,
+                              false => l10n.devNo,
+                              null => l10n.devUnknown,
+                            }),
+                    ),
+                  _Note(text: l10n.devHintsNote, data: _hintsDecidedBy),
+                ],
+              ),
+              _Section(
                 title: l10n.devSectionLanguage,
                 children: [
                   ListTile(
@@ -153,6 +187,12 @@ class _DevMenuView extends StatelessWidget {
                     title: Text(l10n.devSharedStates),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => context.push(Routes.devStates),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.no_photography_outlined),
+                    title: Text(l10n.devCaptureGuard),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => context.push(Routes.devCaptureGuard),
                   ),
                   ListTile(
                     leading: const Icon(Icons.bug_report_outlined),
@@ -252,6 +292,44 @@ class _Section extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A line of explanation at the end of a section.
+class _Note extends StatelessWidget {
+  const _Note({required this.text, this.data});
+
+  final String text;
+
+  /// A technical value under the text, such as an issue number.
+  final String? data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: RvmSpacing.md,
+        vertical: RvmSpacing.sm + 4,
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              text,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: StudentColors.fg2),
+            ),
+            if (data != null) ...[
+              const SizedBox(height: 2),
+              DataText(data!, size: 12, color: StudentColors.fg2),
+            ],
+          ],
+        ),
       ),
     );
   }

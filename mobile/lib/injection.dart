@@ -7,6 +7,7 @@ import 'core/app_info.dart';
 import 'core/crash/crash_log.dart';
 import 'core/env/student_env.dart';
 import 'core/network/student_dio.dart';
+import 'core/security/device_hints.dart';
 import 'core/session/student_session.dart';
 import 'core/version/version_gate.dart';
 import 'features/connectivity/connectivity_bloc.dart';
@@ -26,7 +27,8 @@ final GetIt getIt = GetIt.instance;
 /// banner only follows the stream. [versionSource] is
 /// where the launch check reads the minimum version; until Scheduler_Backend
 /// #158 publishes one, nothing does. [httpAdapter] replaces the network in
-/// tests.
+/// tests. [deviceHints] reads the phone's device hints (student_app #8,
+/// item 2); they are for messages only and never decide anything.
 void configureDependencies({
   required StudentEnv env,
   required AppInfo appInfo,
@@ -38,6 +40,7 @@ void configureDependencies({
   AppLanguage? savedLanguage,
   VersionSource versionSource = const UnpublishedVersionSource(),
   HttpClientAdapter? httpAdapter,
+  DeviceHintsSource? deviceHints,
 }) {
   final session = StudentSession(secureStore);
   final language = LanguageBloc(
@@ -50,6 +53,7 @@ void configureDependencies({
     ..registerSingleton<AppInfo>(appInfo)
     ..registerSingleton<SecureStore>(secureStore)
     ..registerSingleton<CrashLogStore>(crashLog)
+    ..registerSingleton<DeviceHintsSource>(deviceHints ?? PlatformDeviceHints())
     ..registerSingleton<StudentSession>(session)
     ..registerSingleton<LanguageBloc>(language)
     ..registerSingleton<StartupBloc>(
