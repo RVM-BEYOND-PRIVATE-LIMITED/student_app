@@ -14,9 +14,16 @@ final class _StatusChanged extends ConnectivityEvent {
 }
 
 /// The app came back to the foreground (`AppLifecycleState.resumed`): while
-/// the banner shows, check again at once.
+/// the banner shows, check again at once and start the back-off afresh.
 final class ConnectivityResumed extends ConnectivityEvent {
   const ConnectivityResumed();
+}
+
+/// The app went to the background (`AppLifecycleState.hidden` or `paused`):
+/// the back-off stops until [ConnectivityResumed], so a phone left offline in
+/// someone's pocket does not wake up every minute to look for the network.
+final class ConnectivityPaused extends ConnectivityEvent {
+  const ConnectivityPaused();
 }
 
 /// The next check of the back-off is due.
@@ -44,13 +51,17 @@ class ConnectivityState extends Equatable {
 /// while the banner shows the bloc checks again on its own, after each of
 /// [recheckDelays] in turn and then every last delay, and at once when the
 /// app comes back to the foreground ([ConnectivityResumed]). The checks stop
-/// as soon as the phone is online again. Without [check] it only follows
+/// as soon as the phone is online again, and while the app is in the
+/// background ([ConnectivityPaused]). A check that has not answered within
+/// [checkTimeout] counts as still offline, so a platform call that never
+/// returns cannot stop the checks for good. Without [check] it only follows
 /// [status].
 class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
   ConnectivityBloc(
     Stream<bool> status, {
     Future<bool> Function()? check,
     this.recheckDelays = defaultRecheckDelays,
+    this.checkTimeout = defaultCheckTimeout,
   }) : assert(recheckDelays.isNotEmpty),
        _check = check,
        super(const ConnectivityState(online: true)) {
@@ -61,9 +72,15 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
       _show(event.online, emit);
     });
     on<ConnectivityResumed>((event, emit) async {
+      _paused = false;
       if (state.online) return;
       _attempt = 0;
       await _recheck(emit);
+    });
+    on<ConnectivityPaused>((event, emit) {
+      _paused = true;
+      _timer?.cancel();
+      _timer = null;
     });
     on<_RecheckDue>((event, emit) => _recheck(emit));
     _subscription = status.listen(
@@ -82,7 +99,14 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
     Duration(minutes: 1),
   ];
 
+  /// How long one [check] may take. Longer than core_network's own 3 s
+  /// lookup, so only a call that hangs (such as `checkConnectivity()` on a
+  /// device whose platform side never answers) runs into it.
+  static const defaultCheckTimeout = Duration(seconds: 6);
+
   final List<Duration> recheckDelays;
+
+  final Duration checkTimeout;
 
   final Future<bool> Function()? _check;
   late final StreamSubscription<bool> _subscription;
@@ -91,11 +115,14 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
   int _generation = 0;
   bool _checking = false;
 
+  /// In the background: no back-off timer runs.
+  bool _paused = false;
+
   void _show(bool online, Emitter<ConnectivityState> emit) {
     emit(ConnectivityState(online: online));
     _timer?.cancel();
     _timer = null;
-    if (!online && _check != null && !isClosed) {
+    if (!online && _check != null && !_paused && !isClosed) {
       final delay =
           recheckDelays[_attempt < recheckDelays.length
               ? _attempt
@@ -114,9 +141,11 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
     final generation = _generation;
     bool online;
     try {
-      online = await check();
+      online = await check().timeout(checkTimeout);
     } catch (_) {
-      // A failing check says nothing about the network: try again later.
+      // A failing or hung check says nothing about the network: the banner
+      // stays and the back-off tries again later. A hung call is left behind;
+      // if it ever answers, nothing listens.
       online = false;
     } finally {
       _checking = false;

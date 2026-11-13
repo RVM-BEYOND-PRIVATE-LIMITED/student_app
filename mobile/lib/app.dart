@@ -38,10 +38,15 @@ class _StudentAppState extends State<StudentApp> {
   @override
   void initState() {
     super.initState();
-    // Back in the foreground: the offline banner checks again at once.
+    // In the background the offline banner's re-checks stop; back in the
+    // foreground it checks again at once and starts its back-off afresh.
+    // Hidden always comes before paused; both are sent, and the second one
+    // changes nothing.
+    final connectivity = getIt<ConnectivityBloc>();
     _lifecycle = AppLifecycleListener(
-      onResume: () =>
-          getIt<ConnectivityBloc>().add(const ConnectivityResumed()),
+      onHide: () => connectivity.add(const ConnectivityPaused()),
+      onPause: () => connectivity.add(const ConnectivityPaused()),
+      onResume: () => connectivity.add(const ConnectivityResumed()),
     );
   }
 

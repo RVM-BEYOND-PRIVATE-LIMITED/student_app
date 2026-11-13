@@ -303,6 +303,51 @@ void main() {
       expect(checks, 1, reason: 'checked at once, not after the back-off');
       expect(find.byType(OfflineBar), findsNothing);
     });
+
+    testWidgets('makes no checks while the app is in the background, and '
+        'starts the back-off again back in the foreground', (tester) async {
+      var checks = 0;
+      final app = AppHarness(
+        store: FakeSecureStore({LanguageStore.key: 'en'}),
+        connectivityCheck: () async {
+          checks++;
+          return false;
+        },
+      );
+      await app.launch(tester);
+      app.online.add(false);
+      await tester.pumpAndSettle();
+      expect(find.byType(OfflineBar), findsOneWidget);
+
+      for (final state in [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      await tester.pump(const Duration(minutes: 10));
+      expect(checks, 0, reason: 'the back-off sleeps in the background');
+
+      for (final state in [
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      await tester.pump();
+      expect(checks, 1, reason: 'checked at once');
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump();
+      expect(checks, 2, reason: 'the back-off starts again at 5 s');
+      expect(find.byType(OfflineBar), findsOneWidget);
+
+      // Back online: the back-off ends, so no timer outlives the test.
+      app.online.add(true);
+      await tester.pumpAndSettle();
+      expect(find.byType(OfflineBar), findsNothing);
+    });
   });
 
   group('Accept-Language follows the app (item 8)', () {
