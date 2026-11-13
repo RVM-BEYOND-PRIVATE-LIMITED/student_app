@@ -5,16 +5,21 @@
 // Run from mobile/ after tool/build_release.sh. It exits 1 and lists every
 // problem when a file fails:
 //
-// * APK: the target API level is at least [minTargetSdk]; the
-//   app is not debuggable; cleartext traffic is off; every component in the
-//   merged manifest says `android:exported` explicitly, and only the
-//   reviewed ones ([reviewedExports]) are exported. Read with aapt2 from the
-//   Android SDK's newest build-tools ($ANDROID_HOME or $ANDROID_SDK_ROOT).
+// * Both, from the merged manifest (an App Bundle's base module manifest):
+//   the build is prod ([flavorMetaData]), never a dev build with the
+//   Developer menu and its test switches (student_app #8, check 7); the
+//   target API level is at least [minTargetSdk]; the app is not debuggable;
+//   cleartext traffic is off; every component says `android:exported`
+//   explicitly, and only the reviewed ones ([reviewedExports]) are
+//   exported. Read with aapt2 from the Android SDK's newest build-tools
+//   ($ANDROID_HOME or $ANDROID_SDK_ROOT).
 // * App Bundle: R8's mapping file is inside, so Play can de-obfuscate crash
 //   reports.
-// * Both: no keystore, signing file, `.env` or private key is inside.
+// * Both: no keystore, signing file, `.env`, `google-services.json`,
+//   service-account JSON, `.pem` or `.key` file, and no private key, is
+//   inside.
 //
-// It needs `unzip` and aapt2, nothing from pub.
+// It needs `unzip`, `zip` and aapt2, nothing from pub.
 
 import 'dart:convert';
 import 'dart:io';
@@ -37,6 +42,12 @@ const reviewedExports = <String, String?>{
   'com.rvm.rvmstudent.MainActivity': null,
   'androidx.profileinstaller.ProfileInstallReceiver': 'android.permission.DUMP',
 };
+
+/// The `<application>` meta-data that records the flavor a build runs as,
+/// `dev` or `prod` (android/app/build.gradle.kts, from the FLAVOR
+/// dart-define). Only a prod build may be released: a dev build carries the
+/// Developer menu and its test switches.
+const flavorMetaData = 'com.rvm.rvmstudent.FLAVOR';
 
 /// One activity, activity-alias, service, receiver or provider of a merged
 /// manifest.
@@ -68,11 +79,16 @@ class ManifestFacts {
     required this.components,
     this.usesCleartextTraffic,
     this.debuggable,
+    this.metaData = const {},
   });
 
   final List<ManifestComponent> components;
   final bool? usesCleartextTraffic;
   final bool? debuggable;
+
+  /// The `<application>`'s own meta-data, name to value. A component's
+  /// meta-data is not in it.
+  final Map<String, String> metaData;
 }
 
 const _componentKinds = {
@@ -89,10 +105,12 @@ final _attribute = RegExp(
 );
 
 /// The value of an aapt2 attribute line: `"text" (Raw: "text")`, `true`,
-/// `false`, `@0x7f0e0000` or a number.
+/// `false`, `@0x7f0e0000` or a number. In an App Bundle's (protobuf)
+/// manifest every value carries the `(Raw: "…")` suffix, `true` included.
 String _value(String raw) {
   final quoted = RegExp(r'^"([^"]*)"').firstMatch(raw);
-  return quoted != null ? quoted[1]! : raw.trim();
+  if (quoted != null) return quoted[1]!;
+  return raw.replaceFirst(RegExp(r'\s+\(Raw: .*\)$'), '').trim();
 }
 
 bool? _bool(String? value) => switch (value) {
@@ -108,6 +126,7 @@ bool? _bool(String? value) => switch (value) {
 /// attributes are not read.
 ManifestFacts parseManifestTree(String tree) {
   final components = <ManifestComponent>[];
+  final applicationMetaData = <Map<String, String>>[];
   Map<String, String>? application;
   Map<String, String>? component;
   Map<String, String>? attributesOf;
@@ -141,6 +160,10 @@ ManifestFacts parseManifestTree(String tree) {
         attributesOf = component = {};
         componentKind = tag;
         componentIndent = indent;
+      } else if (tag == 'meta-data' &&
+          application != null &&
+          component == null) {
+        applicationMetaData.add(attributesOf = {});
       } else {
         attributesOf = null;
       }
@@ -157,6 +180,10 @@ ManifestFacts parseManifestTree(String tree) {
     components: components,
     usesCleartextTraffic: _bool(application?['usesCleartextTraffic']),
     debuggable: _bool(application?['debuggable']),
+    metaData: {
+      for (final entry in applicationMetaData)
+        if (entry['name'] != null) entry['name']!: entry['value'] ?? '',
+    },
   );
 }
 
@@ -169,7 +196,7 @@ int? parseTargetSdk(String badging) {
   return match == null ? null : int.parse(match[1]!);
 }
 
-/// What is wrong with an APK's manifest, given aapt2's badging and xmltree
+/// What is wrong with a build's manifest, given aapt2's badging and xmltree
 /// output. Empty when nothing is.
 List<String> manifestProblems({
   required String badging,
@@ -184,6 +211,15 @@ List<String> manifestProblems({
   }
 
   final facts = parseManifestTree(manifestTree);
+  final flavor = facts.metaData[flavorMetaData];
+  if (flavor == null) {
+    problems.add('no build flavor recorded ($flavorMetaData meta-data)');
+  } else if (flavor != 'prod') {
+    problems.add(
+      'a FLAVOR=$flavor build: only a prod build may be released (a dev '
+      'build has the Developer menu and its test switches)',
+    );
+  }
   if (facts.debuggable == true) problems.add('the app is debuggable');
   if (facts.usesCleartextTraffic != false) {
     problems.add('android:usesCleartextTraffic is not false');
@@ -211,7 +247,10 @@ List<String> manifestProblems({
 }
 
 /// Entries that must never be inside a build: keystores, signing and SDK
-/// property files, `.env` files.
+/// property files, `.env` files, Firebase's `google-services.json`,
+/// service-account JSON, `.pem` and `.key` files. A service-account file
+/// under another name still holds a private key, which [containsPrivateKey]
+/// finds.
 List<String> forbiddenEntries(Iterable<String> entries) => [
   for (final entry in entries)
     if (_isForbidden(entry.split('/').last.toLowerCase())) entry,
@@ -222,11 +261,19 @@ bool _isForbidden(String file) =>
     file.endsWith('.keystore') ||
     file.endsWith('.p12') ||
     file.endsWith('.pfx') ||
+    file.endsWith('.pem') ||
+    file.endsWith('.key') ||
     file == 'key.properties' ||
     file == 'local.properties' ||
+    file == 'google-services.json' ||
+    _serviceAccountJson.hasMatch(file) ||
     file == '.env' ||
     file.startsWith('.env.') ||
     file.endsWith('.env');
+
+/// `service-account.json`, `play_service_account.json`,
+/// `rvm-serviceaccount-key.json` and the like.
+final _serviceAccountJson = RegExp(r'service[-_.]?account.*\.json$');
 
 final _privateKey = RegExp(r'-----BEGIN [A-Z ]*PRIVATE KEY-----');
 
@@ -313,22 +360,61 @@ Future<List<String>> checkFile(String path, {String? aapt2}) async {
     entries: entries,
     content: await _runBytes('unzip', ['-p', path]),
   );
-  if (path.endsWith('.apk')) {
-    final tool = aapt2 ?? findAapt2(Platform.environment);
-    problems.addAll(
-      manifestProblems(
-        badging: await _run(tool, ['dump', 'badging', path]),
-        manifestTree: await _run(tool, [
-          'dump',
-          'xmltree',
-          '--file',
-          'AndroidManifest.xml',
-          path,
-        ]),
-      ),
-    );
+  final tool = aapt2 ?? findAapt2(Platform.environment);
+  if (path.endsWith('.aab')) {
+    final temp = Directory.systemTemp.createTempSync('rvm_check_release_');
+    try {
+      problems.addAll(
+        await _manifestProblemsOf(await _baseModuleApk(path, temp), tool),
+      );
+    } finally {
+      temp.deleteSync(recursive: true);
+    }
+  } else {
+    problems.addAll(await _manifestProblemsOf(path, tool));
   }
   return problems;
+}
+
+/// [manifestProblems] of the APK at [apk], read with [aapt2].
+Future<List<String>> _manifestProblemsOf(String apk, String aapt2) async =>
+    manifestProblems(
+      badging: await _run(aapt2, ['dump', 'badging', apk]),
+      manifestTree: await _run(aapt2, [
+        'dump',
+        'xmltree',
+        '--file',
+        'AndroidManifest.xml',
+        apk,
+      ]),
+    );
+
+/// The App Bundle entries aapt2 needs to read its base module's manifest,
+/// and where they go in [_baseModuleApk].
+const bundleManifestEntries = {
+  'base/manifest/AndroidManifest.xml': 'AndroidManifest.xml',
+  'base/resources.pb': 'resources.pb',
+};
+
+/// aapt2 reads a manifest from an APK only. An App Bundle keeps its base
+/// module's merged manifest and resource table in protobuf form; with both
+/// at the root of a zip they make a protobuf-format APK, which aapt2 reads
+/// like any other. Written into [temp]; returns its path.
+Future<String> _baseModuleApk(String aab, Directory temp) async {
+  for (final MapEntry(key: entry, value: name)
+      in bundleManifestEntries.entries) {
+    File(
+      '${temp.path}/$name',
+    ).writeAsBytesSync(await _runBytes('unzip', ['-p', aab, entry]));
+  }
+  final apk = '${temp.path}/base.apk';
+  await _run('zip', [
+    '-q',
+    '-j',
+    apk,
+    for (final name in bundleManifestEntries.values) '${temp.path}/$name',
+  ]);
+  return apk;
 }
 
 Future<void> main(List<String> args) async {

@@ -18,13 +18,14 @@ void main() {
     ..createSync(recursive: true)
     ..writeAsBytesSync(List.filled(bytes, 0));
 
-  test('finds the App Bundle first, then each per-ABI APK', () {
+  test('finds the App Bundle first, then the universal APK, then each '
+      'per-ABI APK', () {
     put('app/outputs/flutter-apk/app-x86_64-release.apk', 3);
     put('app/outputs/flutter-apk/app-arm64-v8a-release.apk', 2);
     put('app/outputs/flutter-apk/app-armeabi-v7a-release.apk', 1);
     put('app/outputs/bundle/release/app-release.aab', 4);
-    // Not per-ABI release builds.
     put('app/outputs/flutter-apk/app-release.apk', 5);
+    // Not release builds.
     put('app/outputs/flutter-apk/app-debug.apk', 6);
     put('app/outputs/flutter-apk/app-arm64-v8a-release.apk.sha1', 7);
 
@@ -32,6 +33,7 @@ void main() {
       [for (final f in releaseOutputs(build)) f.uri.pathSegments.last],
       [
         'app-release.aab',
+        'app-release.apk',
         'app-arm64-v8a-release.apk',
         'app-armeabi-v7a-release.apk',
         'app-x86_64-release.apk',
@@ -55,6 +57,7 @@ void main() {
       contains('| app-arm64-v8a-release.apk | 17273221 | 16.47 |'),
     );
     expect(report, contains('no size budget is agreed (student_app #13)'));
+    expect(report, contains('app-release.apk, the universal APK'));
     expect(report, isNot(contains('budget:')));
   });
 }

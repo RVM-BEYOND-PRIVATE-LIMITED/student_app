@@ -32,8 +32,8 @@ void main() {
     );
   });
 
-  test('the release builds are the obfuscated App Bundle and per-ABI APKs, '
-      'signed only with the throwaway debug key', () {
+  test('the release builds are the obfuscated App Bundle, universal APK and '
+      'per-ABI APKs, signed only with the throwaway debug key', () {
     final build = workflow.substring(
       step('Release builds'),
       step('Release check'),
@@ -54,6 +54,8 @@ void main() {
 
     expect(check, contains('dart run tool/check_release.dart'));
     expect(check, contains('build/app/outputs/bundle/release/app-release.aab'));
+    // The universal APK is the pilot build (README, "Version codes").
+    expect(check, contains('build/app/outputs/flutter-apk/app-release.apk'));
     expect(check, contains('build/app/outputs/flutter-apk/app-*-release.apk'));
     expect(report, contains('dart run tool/size_report.dart'));
     expect(report, contains(r'"$GITHUB_STEP_SUMMARY"'));

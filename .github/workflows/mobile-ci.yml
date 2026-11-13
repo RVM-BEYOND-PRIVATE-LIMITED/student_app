@@ -104,9 +104,10 @@ jobs:
           retention-days: 7
 
       # The release builds as they would ship (student_app #8, items 5 and
-      # 6): the App Bundle and one APK per ABI, R8-shrunk and obfuscated,
-      # with their Dart symbol files and R8 mapping written to build/symbols/
-      # (tool/build_release.sh). For checking and size only. There is no
+      # 6): prod (FLAVOR=prod), R8-shrunk and obfuscated: the App Bundle,
+      # the universal pilot APK and one APK per ABI, with their Dart symbol
+      # files, Dart obfuscation maps and R8 mapping written to
+      # build/symbols/ (tool/build_release.sh). For checking and size only. There is no
       # release key in this repository: the signing key and the application
       # id are permanent choices made under student_app #20.
       # RVM_CI_SIZE_REPORT signs these builds with the runner's throwaway
@@ -118,13 +119,17 @@ jobs:
           RVM_CI_SIZE_REPORT: 'true'
         run: bash tool/build_release.sh
 
-      # Target API level, not debuggable, cleartext off, every exported
-      # component reviewed, R8's mapping inside the bundle, and no keystore,
-      # signing file, .env or private key inside (tool/check_release.dart).
+      # A prod build (no Developer menu or test switch), target API level,
+      # not debuggable, cleartext off, every exported component reviewed
+      # (the bundle's base manifest too), R8's mapping inside the bundle, and
+      # no keystore, signing file, .env, google-services.json,
+      # service-account JSON, .pem, .key or private key inside
+      # (tool/check_release.dart).
       - name: Release check
         run: |
           dart run tool/check_release.dart \
             build/app/outputs/bundle/release/app-release.aab \
+            build/app/outputs/flutter-apk/app-release.apk \
             build/app/outputs/flutter-apk/app-*-release.apk
 
       # A report, not a gate: no size budget is agreed yet (student_app #13).

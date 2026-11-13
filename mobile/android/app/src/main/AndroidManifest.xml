@@ -46,6 +46,12 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- The flavor this build runs as, dev or prod (android/app/build.gradle.kts,
+             from the FLAVOR dart-define). Nothing reads it at run time:
+             tool/check_release.dart fails a release build that is not prod. -->
+        <meta-data
+            android:name="com.rvm.rvmstudent.FLAVOR"
+            android:value="${studentFlavor}" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

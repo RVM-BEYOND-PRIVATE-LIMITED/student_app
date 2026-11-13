@@ -1,9 +1,26 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// The FLAVOR dart-define, as lib/core/env/student_env.dart reads it.
+// `flutter build` hands Gradle every --dart-define in the dart-defines
+// property, each base64-encoded, comma-separated; the last FLAVOR wins, as
+// in Dart. Empty when none was given.
+val dartFlavor: String =
+    project.findProperty("dart-defines")?.toString().orEmpty()
+        .split(",")
+        .filter { it.isNotEmpty() }
+        .map { String(Base64.getDecoder().decode(it), Charsets.UTF_8) }
+        .lastOrNull { it.startsWith("FLAVOR=") }
+        ?.removePrefix("FLAVOR=")
+        ?.trim()
+        ?.lowercase()
+        .orEmpty()
 
 android {
     namespace = "com.rvm.rvmstudent"
@@ -33,6 +50,13 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // The flavor the Dart code runs as, written into the manifest
+        // (com.rvm.rvmstudent.FLAVOR) so tool/check_release.dart can fail a
+        // dev build, with its Developer menu and test switches (student_app
+        // #8, check 7). It changes nothing at run time. With no FLAVOR, a
+        // release build is prod (set below) and any other build is dev, the
+        // same rule as StudentEnv.resolve.
+        manifestPlaceholders["studentFlavor"] = dartFlavor.ifEmpty { "dev" }
     }
 
     buildTypes {
@@ -62,6 +86,8 @@ android {
             // (tool/build_release.sh): both are kept for crash reports.
             isMinifyEnabled = true
             isShrinkResources = true
+
+            manifestPlaceholders["studentFlavor"] = dartFlavor.ifEmpty { "prod" }
         }
     }
 }

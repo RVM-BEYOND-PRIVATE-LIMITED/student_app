@@ -6,15 +6,17 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../tool/check_release.dart';
 
 /// student_app #8, item 5: the release check. The fixtures are aapt2's real
-/// output for this app's arm64 release APK (Flutter 3.35.7, build-tools
-/// 36.0.0); each failure case changes one thing in them.
+/// output for this app's universal release APK and for its App Bundle's base
+/// module (Flutter 3.35.7, build-tools 36.0.0), both built by
+/// tool/build_release.sh; each failure case changes one thing in them.
 void main() {
-  final tree = File(
-    'test/tool/fixtures/release_manifest_tree.txt',
-  ).readAsStringSync();
-  final badging = File(
-    'test/tool/fixtures/release_badging.txt',
-  ).readAsStringSync();
+  String fixture(String name) =>
+      File('test/tool/fixtures/$name').readAsStringSync();
+
+  final tree = fixture('release_manifest_tree.txt');
+  final badging = fixture('release_badging.txt');
+  final bundleTree = fixture('bundle_manifest_tree.txt');
+  final bundleBadging = fixture('bundle_badging.txt');
 
   /// [tree] with [from] replaced by [to]; [from] must be in it.
   String treeWith(String from, String to) {
@@ -28,6 +30,8 @@ void main() {
       'A: http://schemas.android.com/apk/res/android:exported(0x01010010)=false';
   const cleartextOff =
       'A: http://schemas.android.com/apk/res/android:usesCleartextTraffic(0x010104ec)=false';
+  const flavorProd =
+      'A: http://schemas.android.com/apk/res/android:value(0x01010024)="prod" (Raw: "prod")';
 
   group('the merged manifest of this release build', () {
     test('passes', () {
@@ -39,6 +43,7 @@ void main() {
 
       expect(facts.usesCleartextTraffic, isFalse);
       expect(facts.debuggable, isNull);
+      expect(facts.metaData, {flavorMetaData: 'prod', 'flutterEmbedding': '2'});
       expect(
         {for (final c in facts.components) c.name: c.exported},
         {
@@ -63,7 +68,156 @@ void main() {
     });
   });
 
+  // An App Bundle's manifest is in protobuf form: aapt2 adds `(Raw: "…")`
+  // to every value, `true` and `false` included (student_app #8 review).
+  group('the App Bundle\'s base module manifest', () {
+    test('passes', () {
+      expect(
+        manifestProblems(badging: bundleBadging, manifestTree: bundleTree),
+        isEmpty,
+      );
+    });
+
+    test('is read right, (Raw: …) values included', () {
+      final facts = parseManifestTree(bundleTree);
+
+      expect(facts.usesCleartextTraffic, isFalse);
+      expect(facts.debuggable, isNull);
+      expect(facts.metaData[flavorMetaData], 'prod');
+      expect(
+        {for (final c in facts.components) c.name: c.exported},
+        {
+          'com.rvm.rvmstudent.MainActivity': true,
+          'androidx.startup.InitializationProvider': false,
+          'androidx.profileinstaller.ProfileInstallReceiver': true,
+        },
+      );
+      expect(
+        facts.components.singleWhere((c) => c.kind == 'receiver').permission,
+        'android.permission.DUMP',
+      );
+      expect(parseTargetSdk(bundleBadging), minTargetSdk);
+    });
+
+    test('fails the same faults as an APK', () {
+      String bundleWith(String from, String to) {
+        expect(bundleTree, contains(from));
+        return bundleTree.replaceFirst(from, to);
+      }
+
+      const cleartext = 'usesCleartextTraffic(0x010104ec)=false (Raw: "false")';
+      const providerExported =
+          'exported(0x01010010)=false (Raw: "false")\n            A: http://schemas.android.com/apk/res/android:name(0x01010003)="androidx.startup.InitializationProvider"';
+
+      expect(
+        manifestProblems(
+          badging: bundleBadging,
+          manifestTree: bundleWith(
+            cleartext,
+            'usesCleartextTraffic(0x010104ec)=true (Raw: "true")',
+          ),
+        ),
+        [contains('usesCleartextTraffic')],
+      );
+      expect(
+        manifestProblems(
+          badging: bundleBadging,
+          manifestTree: bundleWith(
+            cleartext,
+            '$cleartext\n        A: http://schemas.android.com/apk/res/android:debuggable(0x0101000f)=true (Raw: "true")',
+          ),
+        ),
+        ['the app is debuggable'],
+      );
+      expect(
+        manifestProblems(
+          badging: bundleBadging,
+          manifestTree: bundleWith(
+            providerExported,
+            providerExported.replaceFirst(
+              '=false (Raw: "false")',
+              '=true (Raw: "true")',
+            ),
+          ),
+        ),
+        [contains('InitializationProvider is exported but not reviewed')],
+      );
+      expect(
+        manifestProblems(
+          badging: bundleBadging.replaceFirst(
+            "targetSdkVersion:'36'",
+            "targetSdkVersion:'35'",
+          ),
+          manifestTree: bundleTree,
+        ),
+        [contains('targetSdkVersion 35')],
+      );
+      expect(
+        manifestProblems(
+          badging: bundleBadging,
+          manifestTree: bundleWith(
+            flavorProd,
+            flavorProd.replaceAll('prod', 'dev'),
+          ),
+        ),
+        [contains('FLAVOR=dev')],
+      );
+    });
+
+    test('is read from these entries of the bundle', () {
+      expect(bundleManifestEntries, {
+        'base/manifest/AndroidManifest.xml': 'AndroidManifest.xml',
+        'base/resources.pb': 'resources.pb',
+      });
+    });
+  });
+
   group('fails a build that', () {
+    test('is a dev build, with the Developer menu and its test switches '
+        '(check 7)', () {
+      expect(
+        manifestProblems(
+          badging: badging,
+          manifestTree: treeWith(
+            flavorProd,
+            flavorProd.replaceAll('prod', 'dev'),
+          ),
+        ),
+        [
+          'a FLAVOR=dev build: only a prod build may be released (a dev '
+              'build has the Developer menu and its test switches)',
+        ],
+      );
+    });
+
+    test('does not record its flavor', () {
+      final unnamed = treeWith('"com.rvm.rvmstudent.FLAVOR"', '"other"');
+
+      expect(manifestProblems(badging: badging, manifestTree: unnamed), [
+        'no build flavor recorded ($flavorMetaData meta-data)',
+      ]);
+    });
+
+    test('records its flavor only on a component, not the application', () {
+      // Moved under MainActivity: a component's meta-data is not the
+      // application's, so the build has no flavor.
+      const own =
+          '          E: meta-data (line=97)\n            A: http://schemas.android.com/apk/res/android:name(0x01010003)="com.rvm.rvmstudent.FLAVOR" (Raw: "com.rvm.rvmstudent.FLAVOR")\n            $flavorProd\n';
+      const activityMetaData = '              E: meta-data (line=82)\n';
+      final moved = treeWith(own, '').replaceFirst(
+        activityMetaData,
+        '              E: meta-data (line=81)\n'
+        '                A: http://schemas.android.com/apk/res/android:name(0x01010003)="com.rvm.rvmstudent.FLAVOR" (Raw: "com.rvm.rvmstudent.FLAVOR")\n'
+        '                $flavorProd\n'
+        '$activityMetaData',
+      );
+
+      expect(parseManifestTree(moved).metaData, {'flutterEmbedding': '2'});
+      expect(manifestProblems(badging: badging, manifestTree: moved), [
+        contains('no build flavor recorded'),
+      ]);
+    });
+
     test('targets an older API level', () {
       expect(
         manifestProblems(
@@ -154,7 +308,8 @@ void main() {
   });
 
   group('contents', () {
-    test('a keystore, a signing file or a .env inside fails', () {
+    test('a keystore, a signing file, a .env, Firebase or service-account '
+        'JSON, or a .pem or .key file inside fails', () {
       expect(
         forbiddenEntries([
           'classes.dex',
@@ -168,6 +323,20 @@ void main() {
           'assets/prod.env',
           'android/local.properties',
           'cert/store.p12',
+          'assets/flutter_assets/google-services.json',
+          'assets/service-account.json',
+          'assets/play_service_account.json',
+          'assets/rvm-serviceaccount-key.json',
+          'res/raw/Service_Account_Prod.json',
+          'assets/flutter_assets/certs/server.pem',
+          'assets/upload.key',
+          'res/raw/private.KEY',
+          // Real entries of this app's App Bundle: not secrets.
+          'base/assets/flutter_assets/AssetManifest.json',
+          'base/root/kotlin-tooling-metadata.json',
+          'BUNDLE-METADATA/com.android.tools/r8.json',
+          'base/root/META-INF/services/H0.a',
+          'base/root/META-INF/androidx.core_core.version',
         ]),
         [
           'assets/upload-keystore.jks',
@@ -178,6 +347,14 @@ void main() {
           'assets/prod.env',
           'android/local.properties',
           'cert/store.p12',
+          'assets/flutter_assets/google-services.json',
+          'assets/service-account.json',
+          'assets/play_service_account.json',
+          'assets/rvm-serviceaccount-key.json',
+          'res/raw/Service_Account_Prod.json',
+          'assets/flutter_assets/certs/server.pem',
+          'assets/upload.key',
+          'res/raw/private.KEY',
         ],
       );
     });
