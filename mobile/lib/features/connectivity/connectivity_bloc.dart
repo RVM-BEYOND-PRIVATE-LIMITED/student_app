@@ -151,8 +151,14 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
       _checking = false;
     }
     if (isClosed || emit.isDone) return;
-    // The network spoke while the check ran: its word stands.
-    if (generation != _generation) return;
+    // The network spoke while the check ran: its word stands. If that word was
+    // "offline" while the app was paused, no timer was started then; start
+    // the back-off now so re-checks cannot stop (a resume during this check
+    // returned early because a check was running).
+    if (generation != _generation) {
+      if (!state.online && _timer == null) _show(false, emit);
+      return;
+    }
     _show(online, emit);
   }
 
