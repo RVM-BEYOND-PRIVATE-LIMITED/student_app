@@ -17,14 +17,24 @@ options → USB debugging). `adb devices` must list the phone as `device`.
 No student screen is marked yet (the ID document preview #3, the payout
 account entry #6 and the video player #9 come later), so the check uses the
 Developer menu's test screen, `/dev/capture-guard`. The Developer menu is
-in dev builds only, so install a dev build:
+in dev builds only, so install a dev debug build, with the phone connected:
 
 ```bash
 cd mobile
 flutter run --dart-define=FLAVOR=dev
-# or, for a release-mode build of the same thing:
-flutter run --release --dart-define=FLAVOR=dev
 ```
+
+This is the build to use, not a release build: a release build is always
+prod (no Developer menu, and `tool/build_release.sh` refuses any other
+FLAVOR), and no release build is signed until the signing key is decided
+(student_app #20), so a phone will not install one. The capture guard is
+the same in every build: `MainActivity` sets Android's `FLAG_SECURE` on the
+window, whatever the Dart build mode. That a release build is prod, with
+no Developer menu, is checked on the build itself (`tool/check_release.dart`).
+
+If the phone already has an RVM Student build signed with another key,
+`flutter run` cannot install over it: uninstall it first
+(`adb uninstall com.rvm.rvmstudent`).
 
 A dev build with no `STUDENT_API_HOST` reaches only this computer; the
 check needs no Student API.
@@ -86,8 +96,14 @@ that folder.
    `4-after.png` and `5-after.mp4` show the Developer menu, and the Recents
    card shows it too.
 9. Back to the foreground: open **Capture guard test** again, press Home,
-   reopen the app from the launcher, then repeat step 4. `2-marked.png` is
-   black again.
+   reopen the app from the launcher, then take a new screenshot (a new file,
+   so step 4's stays as it is):
+
+   ```bash
+   adb exec-out screencap -p > 6-marked-again.png
+   ```
+
+   Open `6-marked-again.png`: the app's area is black again.
 
 Steps 2 to 8 also work on an emulator, but the result to record is the
 phone's: an emulator's screen capture can differ from a real phone's.
@@ -103,9 +119,9 @@ phone's: an emulator's screen capture can differ from a real phone's.
 | Recording of the marked screen black (step 5) | _yes / no_ |
 | Recents card blank (step 6) | _yes / no_ |
 | Menu captured again after leaving (step 8) | _yes / no_ |
-| Black again after returning from Home (step 9) | _yes / no_ |
+| Black again after returning from Home (step 9, `6-marked-again.png`) | _yes / no_ |
 | Who ran it | _to fill in_ (a role) |
 
-Keep the files of steps 2 to 8 with the result; they are the evidence.
+Keep the files of steps 2 to 9 with the result; they are the evidence.
 When every row says yes, tick check 1 in student_app #8. The real marked
 screens (#3, #6, #9) repeat steps 3 to 8 on their own screen once built.

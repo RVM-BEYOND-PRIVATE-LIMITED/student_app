@@ -20,7 +20,8 @@
 #   --dart-define=STUDENT_API_HOST=https://...
 # A FLAVOR other than prod is refused: a release build never carries the
 # Developer menu and its test switches, and tool/check_release.dart fails
-# one that does.
+# one that does. The FLAVOR is read as Dart and Gradle read it, trimmed and
+# in any case, so FLAVOR=Prod or FLAVOR=PROD is prod too.
 #
 # Signing: this script signs nothing itself. A release build is signed only
 # once the key route is decided (student_app #20); until then only CI's size
@@ -34,14 +35,26 @@
 # Dart obfuscation map (app.android-<abi>.obfuscation.map.json), and R8's
 # mapping.txt. README, "Reading an obfuscated crash", says how to use them.
 # The App Bundle also carries R8's mapping inside, for Play.
+# build/symbols/apk-per-abi/ holds the same per ABI, but one R8 mapping per
+# ABI (mapping.android-<abi>.txt): each per-ABI APK is its own Gradle build,
+# with its own R8 run.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# FLAVOR's value as lib/core/env/student_env.dart (trim().toLowerCase())
+# and android/app/build.gradle.kts (trim().lowercase()) read it. tr, not
+# ${var,,}, so the bash 3.2 that macOS ships runs it too.
+flavor_of() {
+  printf '%s' "${1##*FLAVOR=}" |
+    sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' |
+    tr '[:upper:]' '[:lower:]'
+}
+
 for arg in "$@"; do
   case "$arg" in
     *FLAVOR=*)
-      if [ "${arg##*FLAVOR=}" != prod ]; then
+      if [ "$(flavor_of "$arg")" != prod ]; then
         echo "error: release builds are prod builds; remove $arg" >&2
         exit 64
       fi
@@ -62,11 +75,12 @@ abis=(android-arm:armeabi-v7a android-arm64:arm64-v8a android-x64:x86_64)
 # reused tree could leave them missing, or from another build.
 flutter clean
 
-# One build, then its Dart symbol files and R8 mapping are checked and kept
-# in $symbols/<name>.
+# One build (`build <name> <mapping file> <flutter build args>`), then its
+# Dart symbol files and R8 mapping are checked and kept in $symbols/<name>,
+# the mapping under the given file name.
 build() {
-  local name=$1
-  shift
+  local name=$1 kept=$2
+  shift 2
   local out="$symbols/$name"
   rm -f "$mapping"
   flutter build "$@" --release --obfuscate --split-debug-info="$out" \
@@ -79,19 +93,22 @@ build() {
     echo "error: R8 wrote no mapping file ($mapping): is shrinking off?" >&2
     exit 1
   fi
-  cp "$mapping" "$out/mapping.txt"
+  cp "$mapping" "$out/$kept"
 }
 
-build appbundle appbundle
-build apk apk
+build appbundle mapping.txt appbundle
+build apk mapping.txt apk
 
 # The per-ABI APKs, one ABI at a time, each saving its Dart obfuscation map.
 # The map differs between ABIs, and Flutter hands every ABI of one build the
 # same --save-obfuscation-map path, so a build of several ABIs keeps only
-# one of them.
+# one of them. Each of these builds runs R8 again, so each keeps its own R8
+# mapping too (mapping.android-<abi>.txt), for a Java or Kotlin trace from
+# that APK.
 for pair in "${abis[@]}"; do
   dart_abi=${pair%%:*}
-  build apk-per-abi apk --split-per-abi --target-platform "$dart_abi" \
+  build apk-per-abi "mapping.$dart_abi.txt" \
+    apk --split-per-abi --target-platform "$dart_abi" \
     --extra-gen-snapshot-options=--save-obfuscation-map="$PWD/$symbols/apk-per-abi/app.$dart_abi.obfuscation.map.json"
 done
 

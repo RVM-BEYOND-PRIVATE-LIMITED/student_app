@@ -188,17 +188,20 @@ void main() {
       final script = read('tool/build_release.sh');
 
       for (final build in [
-        'build appbundle appbundle',
+        'build appbundle mapping.txt appbundle',
         // The universal APK: the pilot build (README, "Version codes").
-        'build apk apk\n',
-        'build apk-per-abi apk --split-per-abi --target-platform "\$dart_abi"',
+        'build apk mapping.txt apk\n',
+        // Each per-ABI APK is its own Gradle build and R8 run, so it keeps
+        // its own R8 mapping: one per ABI, none overwritten.
+        'build apk-per-abi "mapping.\$dart_abi.txt" \\\n'
+            '    apk --split-per-abi --target-platform "\$dart_abi"',
       ]) {
         expect(script, contains(build), reason: build);
       }
       expect(script, contains('--obfuscate'));
       expect(script, contains(r'--split-debug-info="$out"'));
       expect(script, contains('--dart-define=FLAVOR=prod'));
-      expect(script, contains(r'cp "$mapping" "$out/mapping.txt"'));
+      expect(script, contains(r'cp "$mapping" "$out/$kept"'));
       // One Dart obfuscation map per ABI, kept for every build once its
       // libapp.so is shown to be the same.
       expect(
@@ -228,6 +231,8 @@ void main() {
       for (final args in [
         ['--dart-define=FLAVOR=dev'],
         ['--dart-define', 'FLAVOR=Dev'],
+        ['--dart-define=FLAVOR=DEV'],
+        ['--dart-define=FLAVOR='],
         ['--dart-define=FLAVOR=prod', '--dart-define=FLAVOR=dev'],
       ]) {
         final result = Process.runSync(
@@ -244,6 +249,38 @@ void main() {
           reason: '$args',
         );
         expect(result.stderr, isNot(contains('reached flutter')));
+      }
+    });
+
+    test('the FLAVOR guard reads prod in any case, as Dart and Gradle do', () {
+      // The same stand-in: an accepted FLAVOR gets as far as `flutter clean`.
+      final bin = Directory.systemTemp.createTempSync('rvm_no_flutter_');
+      addTearDown(() => bin.deleteSync(recursive: true));
+      File(
+        '${bin.path}/flutter',
+      ).writeAsStringSync('#!/bin/sh\necho reached flutter >&2\nexit 99\n');
+      Process.runSync('chmod', ['+x', '${bin.path}/flutter']);
+
+      for (final args in [
+        ['--dart-define=FLAVOR=prod'],
+        ['--dart-define=FLAVOR=Prod'],
+        ['--dart-define', 'FLAVOR=PROD'],
+        ['--dart-define=FLAVOR= prod '],
+      ]) {
+        final result = Process.runSync(
+          'bash',
+          ['tool/build_release.sh', ...args],
+          environment: {'PATH': '${bin.path}:/usr/bin:/bin'},
+          includeParentEnvironment: false,
+        );
+
+        expect(result.exitCode, 99, reason: '$args');
+        expect(result.stderr, contains('reached flutter'), reason: '$args');
+        expect(
+          result.stderr,
+          isNot(contains('release builds are prod builds')),
+          reason: '$args',
+        );
       }
     });
 

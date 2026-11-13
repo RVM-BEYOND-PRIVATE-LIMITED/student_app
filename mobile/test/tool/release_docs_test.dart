@@ -69,6 +69,26 @@ void main() {
     expect(readme, contains('docs/device-checks.md'));
   });
 
+  test('every capture of check 1 goes to its own file, and the build it '
+      'names is one a phone installs', () {
+    final doc = File('docs/device-checks.md').readAsStringSync();
+
+    // Step 9 (back from Home) keeps step 4's screenshot as it is.
+    final screenshots = RegExp(
+      r'screencap -p > (\S+)',
+    ).allMatches(doc).map((m) => m[1]).toList();
+    expect(screenshots, [
+      '1-menu.png',
+      '2-marked.png',
+      '4-after.png',
+      '6-marked-again.png',
+    ]);
+    expect(screenshots.toSet(), hasLength(screenshots.length));
+    // No release build of check 1: a release build is prod, with no
+    // Developer menu, and is not signed until #20.
+    expect(doc, isNot(contains('--release')));
+  });
+
   test('the Developer menu path the doc walks exists', () {
     final router = File('lib/router/app_router.dart').readAsStringSync();
     final en = File('lib/l10n/app_en.arb').readAsStringSync();
