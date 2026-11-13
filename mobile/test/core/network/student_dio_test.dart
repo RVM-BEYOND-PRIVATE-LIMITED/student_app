@@ -536,7 +536,8 @@ void main() {
     });
 
     test(
-      'the {code, message, details, request_id} shape keeps its request id',
+      'the {code, message, details, request_id} shape keeps its request id '
+      'and its details',
       () async {
         final adapter = ScriptedAdapter(
           (_, _) => jsonReply(409, {
@@ -560,8 +561,27 @@ void main() {
         expect(failure.code, 'EXAMPLE_CONFLICT');
         expect(failure.message, 'Example message.');
         expect(failure.requestId, 'req-0001');
+        // details is carried as decoded, uninterpreted, until student_app #10
+        // defines it, and never printed.
+        expect(failure.details, {'field': 'x'});
+        expect(failure.toString(), isNot(contains('field')));
       },
     );
+
+    test('a reply without details has none', () async {
+      final adapter = ScriptedAdapter(
+        (_, _) => jsonReply(422, {'code': 'X', 'message': 'm'}),
+      );
+
+      final error = await client(adapter)
+          .post<dynamic>('/a', data: {'x': 1})
+          .then<DioException?>(
+            (_) => null,
+            onError: (Object e) => e as DioException,
+          );
+
+      expect(error!.asFailure.details, isNull);
+    });
 
     test('a 5xx keeps its request id too', () async {
       final adapter = ScriptedAdapter(
