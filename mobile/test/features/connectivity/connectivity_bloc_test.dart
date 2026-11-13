@@ -207,6 +207,41 @@ void main() {
     await _close(tester, bloc);
   });
 
+  testWidgets('a network change while paused, then a resume during a running '
+      'check: once that check ends the back-off still runs', (tester) async {
+    var calls = 0;
+    final running = Completer<bool>();
+    final status = StreamController<bool>();
+    final bloc = ConnectivityBloc(
+      status.stream,
+      check: () {
+        calls++;
+        return calls == 1 ? running.future : Future.value(false);
+      },
+      recheckDelays: const [Duration(seconds: 5)],
+    );
+
+    status.add(false);
+    await tester.pump(const Duration(seconds: 5));
+    expect(calls, 1, reason: 'the back-off check is running');
+
+    bloc.add(const ConnectivityPaused());
+    await tester.pump();
+    status.add(false); // the network speaks while the app is paused
+    await tester.pump();
+    bloc.add(const ConnectivityResumed()); // returns early: a check is running
+    await tester.pump();
+
+    running.complete(false); // the stale check ends
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 5));
+    expect(calls, 2, reason: 'the back-off started again; re-checks go on');
+    expect(bloc.state.online, isFalse);
+
+    await _close(tester, bloc);
+    unawaited(status.close());
+  });
+
   testWidgets('a check that hangs counts as offline after its timeout, and '
       'the checks go on', (tester) async {
     var calls = 0;
