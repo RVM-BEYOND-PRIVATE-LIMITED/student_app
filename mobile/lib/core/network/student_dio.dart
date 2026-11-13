@@ -22,7 +22,8 @@ import 'student_headers_interceptor.dart';
 /// 3. [StudentHeadersInterceptor]: User-Agent, `X-App-Version` and
 ///    `Accept-Language` on every call.
 /// 4. [RetryInterceptor]: sends again when the connection never opened.
-/// 5. [StudentAuthInterceptor]: the session's token, and renewal on a 401.
+/// 5. [StudentAuthInterceptor]: the session's token, on requests to the
+///    Student API's own address only, and renewal on a 401.
 /// 6. [LoggingInterceptor], only when [logging] is on. It is off in every
 ///    release build, so a release build logs no request at all.
 /// 7. [ErrorMappingInterceptor]: every error becomes a typed [Failure],
@@ -48,10 +49,13 @@ abstract final class StudentDio {
 
   /// The Student API client.
   ///
+  /// [appVersion] is null when the installed build's version is unknown;
+  /// the client then sends no `X-App-Version`.
+  ///
   /// [adapter] and [retryDelays] exist for tests; the app leaves them out.
   static Dio create({
     required StudentEnv env,
-    required String appVersion,
+    required String? appVersion,
     required String Function() languageTag,
     required StudentSession session,
     SessionRenewer renewer = const NoSessionRenewer(),
@@ -78,6 +82,7 @@ abstract final class StudentDio {
       else
         RetryInterceptor(dio: dio, delays: retryDelays),
       StudentAuthInterceptor(
+        apiBaseUrl: env.apiBaseUrl,
         session: session,
         replayDio: replay,
         renewer: renewer,

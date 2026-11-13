@@ -78,7 +78,7 @@ class _Header extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF25396B), Color(0xFF1A2B53)],
+          colors: StudentColors.headerGradient,
         ),
         borderRadius: BorderRadius.vertical(
           bottom: Radius.circular(RvmRadii.xl),
@@ -89,7 +89,10 @@ class _Header extends StatelessWidget {
           bottom: Radius.circular(RvmRadii.xl),
         ),
         child: CustomPaint(
-          painter: const GridPaperPainter(color: Color(0x0FFFFFFF), gap: 24),
+          painter: const GridPaperPainter(
+            color: StudentColors.headerGrid,
+            gap: 24,
+          ),
           child: SafeArea(
             bottom: false,
             child: Padding(

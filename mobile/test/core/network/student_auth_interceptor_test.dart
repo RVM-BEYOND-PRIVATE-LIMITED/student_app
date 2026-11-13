@@ -50,17 +50,20 @@ void main() {
     );
   });
 
-  Dio client(ScriptedAdapter adapter, SessionRenewer renewer) =>
-      StudentDio.create(
-        env: StudentEnv.resolve(flavor: 'dev', host: ''),
-        appVersion: '0.1.0',
-        languageTag: () => 'hi',
-        session: session,
-        renewer: renewer,
-        logging: false,
-        adapter: adapter,
-        retryDelays: const [Duration.zero],
-      );
+  Dio client(
+    ScriptedAdapter adapter,
+    SessionRenewer renewer, {
+    StudentEnv? env,
+  }) => StudentDio.create(
+    env: env ?? StudentEnv.resolve(flavor: 'dev', host: ''),
+    appVersion: '0.1.0',
+    languageTag: () => 'hi',
+    session: session,
+    renewer: renewer,
+    logging: false,
+    adapter: adapter,
+    retryDelays: const [Duration.zero],
+  );
 
   /// 401 for the first token, 200 once a renewed token is sent.
   ScriptedAdapter refusesOldToken() => ScriptedAdapter((options, _) {
@@ -241,6 +244,7 @@ void main() {
       ..httpClientAdapter = adapter
       ..interceptors.add(
         StudentAuthInterceptor(
+          apiBaseUrl: Uri.parse('http://127.0.0.1:3000'),
           session: StudentSession(stuck),
           replayDio: Dio(),
           sessionTimeout: const Duration(milliseconds: 50),
@@ -256,8 +260,131 @@ void main() {
 
   test('session reads wait five seconds at most by default', () {
     expect(
-      StudentAuthInterceptor(session: session, replayDio: Dio()).sessionTimeout,
+      StudentAuthInterceptor(
+        apiBaseUrl: StudentEnv.devLoopback,
+        session: session,
+        replayDio: Dio(),
+      ).sessionTimeout,
       const Duration(seconds: 5),
     );
+  });
+  group('the token goes to the Student API only', () {
+    StudentEnv prod() =>
+        StudentEnv.resolve(flavor: 'prod', host: 'https://api.example.test');
+
+    test(
+      'a request to another host, port or scheme carries no token',
+      () async {
+        final adapter = ScriptedAdapter((_, _) => jsonReply(200, {'ok': true}));
+        final dio = client(adapter, _FakeRenewer(session), env: prod());
+
+        await dio.get<dynamic>('/a');
+        for (final url in [
+          'https://cdn.example.test/file',
+          'https://api.example.test.evil.test/a',
+          'https://api.example.test:8443/a',
+        ]) {
+          await dio.get<dynamic>(url);
+        }
+
+        expect(adapter.seen.first.bearer, 'access-0');
+        for (final request in adapter.seen.skip(1)) {
+          expect(
+            request.header('Authorization'),
+            isNull,
+            reason: '${request.uri}',
+          );
+        }
+      },
+    );
+
+    test(
+      'the same address written with its default port gets the token',
+      () async {
+        final adapter = ScriptedAdapter((_, _) => jsonReply(200, {'ok': true}));
+        final dio = client(adapter, _FakeRenewer(session), env: prod());
+
+        await dio.get<dynamic>('https://API.example.test:443/a');
+
+        expect(adapter.seen.single.bearer, 'access-0');
+      },
+    );
+
+    test('a dev build gives the token to its own address only, not to other '
+        'loopback addresses', () async {
+      final adapter = ScriptedAdapter((_, _) => jsonReply(200, {'ok': true}));
+      final dio = client(adapter, _FakeRenewer(session));
+
+      await dio.get<dynamic>('http://127.0.0.1:3000/a');
+      await dio.get<dynamic>('http://127.0.0.1:4000/a');
+      await dio.get<dynamic>('http://localhost:3000/a');
+      await dio.get<dynamic>('https://127.0.0.1:3000/a');
+
+      expect(adapter.seen.map((r) => r.header('Authorization')), [
+        'Bearer access-0',
+        null,
+        null,
+        null,
+      ]);
+    });
+
+    test('a 401 from another host is passed on: no renewal, no replay with '
+        'the token, the session kept', () async {
+      final adapter = ScriptedAdapter((_, _) => jsonReply(401, {'code': 'X'}));
+      final renewer = _FakeRenewer(session);
+      final dio = client(adapter, renewer, env: prod());
+
+      // Even when the caller set an Authorization header of its own.
+      for (final options in [
+        null,
+        Options(headers: {'Authorization': 'Bearer theirs'}),
+      ]) {
+        await expectLater(
+          dio.get<dynamic>('https://cdn.example.test/a', options: options),
+          throwsA(
+            isA<DioException>().having(
+              (e) => e.asFailure,
+              'failure',
+              isA<UnauthorizedFailure>(),
+            ),
+          ),
+        );
+      }
+
+      expect(renewer.calls, 0);
+      expect(adapter.seen, hasLength(2), reason: 'nothing was sent again');
+      expect(adapter.seen[0].header('Authorization'), isNull);
+      expect(adapter.seen[1].header('Authorization'), 'Bearer theirs');
+      expect(
+        adapter.seen.map((r) => r.header('Authorization')),
+        everyElement(isNot(contains('access-'))),
+      );
+      expect(await session.hasSession(), isTrue);
+    });
+
+    test('a replay after renewal goes to the Student API with the new token, '
+        'and nothing else gets it', () async {
+      final adapter = ScriptedAdapter((options, _) {
+        if (options.uri.host != 'api.example.test') {
+          return jsonReply(200, {'ok': true});
+        }
+        final auth = '${options.headers['Authorization']}';
+        return auth.contains('renewed')
+            ? jsonReply(200, {'ok': true})
+            : jsonReply(401, {'code': 'ANY'});
+      });
+      final dio = client(adapter, _FakeRenewer(session), env: prod());
+
+      await dio.get<dynamic>('/a');
+      await dio.get<dynamic>('https://cdn.example.test/b');
+
+      expect(adapter.seen.map((r) => '${r.uri}'), [
+        'https://api.example.test/a',
+        'https://api.example.test/a',
+        'https://cdn.example.test/b',
+      ]);
+      expect(adapter.seen[1].bearer, 'access-1-renewed');
+      expect(adapter.seen[2].header('Authorization'), isNull);
+    });
   });
 }

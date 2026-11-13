@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rvm_student/core/env/student_env.dart';
 
@@ -12,6 +13,76 @@ void main() {
       expect(env.apiBaseUrl.toString(), 'http://127.0.0.1:3000');
       expect(env.hostSetOnPurpose, isFalse);
       expect(StudentEnv.isLoopbackHost(env.apiBaseUrl.host), isTrue);
+    });
+
+    group('with no FLAVOR, the build mode decides', () {
+      test('a debug or profile build is dev', () {
+        final env = StudentEnv.resolve(
+          flavor: '',
+          host: '',
+          releaseMode: false,
+        );
+
+        expect(env.flavor, StudentFlavor.dev);
+        expect(env.apiBaseUrl, StudentEnv.devLoopback);
+      });
+
+      test('a release build is prod: never the loopback host', () {
+        final env = StudentEnv.resolve(
+          flavor: '',
+          host: 'https://api.example.test',
+          releaseMode: true,
+        );
+
+        expect(env.flavor, StudentFlavor.prod);
+        expect(env.isDev, isFalse);
+        expect(env.apiBaseUrl.toString(), 'https://api.example.test');
+      });
+
+      test('a release build with no FLAVOR and no host refuses to start, '
+          'and says how to make a dev build', () {
+        expect(
+          () => StudentEnv.resolve(flavor: '', host: '', releaseMode: true),
+          throwsA(
+            isA<StudentEnvError>().having(
+              (e) => e.message,
+              'message',
+              allOf(contains('STUDENT_API_HOST'), contains('FLAVOR=dev')),
+            ),
+          ),
+        );
+      });
+
+      test('a release build is dev only when FLAVOR=dev is passed', () {
+        final env = StudentEnv.resolve(
+          flavor: 'dev',
+          host: '',
+          releaseMode: true,
+        );
+
+        expect(env.flavor, StudentFlavor.dev);
+        expect(env.apiBaseUrl, StudentEnv.devLoopback);
+      });
+
+      test('an explicit FLAVOR=prod is prod in every mode', () {
+        for (final releaseMode in [false, true]) {
+          expect(
+            StudentEnv.resolve(
+              flavor: 'prod',
+              host: 'https://api.example.test',
+              releaseMode: releaseMode,
+            ).flavor,
+            StudentFlavor.prod,
+          );
+        }
+      });
+
+      test('the default follows kReleaseMode (a debug build here)', () {
+        expect(
+          StudentEnv.resolve(flavor: '', host: '').flavor,
+          kReleaseMode ? StudentFlavor.prod : StudentFlavor.dev,
+        );
+      });
     });
 
     test('FLAVOR is read without regard to case or spaces', () {

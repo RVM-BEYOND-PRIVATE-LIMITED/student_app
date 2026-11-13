@@ -82,6 +82,34 @@ void main() {
       );
     });
 
+    test('a build whose version is unknown sends no X-App-Version and no '
+        'version in its User-Agent', () async {
+      final adapter = ScriptedAdapter((_, _) => jsonReply(200, {'ok': true}));
+      final dio = StudentDio.create(
+        env: StudentEnv.resolve(flavor: 'dev', host: ''),
+        appVersion: null,
+        languageTag: () => 'en',
+        session: session,
+        logging: false,
+        adapter: adapter,
+        retryDelays: const [Duration.zero],
+      );
+
+      await dio.get<dynamic>('/a');
+      // Not even when the caller wrote one in.
+      await dio.post<dynamic>(
+        '/b',
+        data: {'x': 1},
+        options: Options(headers: {'X-App-Version': '0.0.0'}),
+      );
+
+      for (final request in adapter.seen) {
+        expect(request.header('X-App-Version'), isNull);
+        expect(request.header('User-Agent'), 'RVM-Student (Android)');
+        expect(request.header('Accept-Language'), 'en');
+      }
+    });
+
     test('Accept-Language follows a language switch at once', () async {
       final adapter = ScriptedAdapter((_, _) => jsonReply(200, {'ok': true}));
       final dio = client(adapter);
@@ -209,8 +237,8 @@ void main() {
           dio.get<dynamic>(url),
           throwsA(
             isA<DioException>().having(
-              (e) => e.error,
-              'error',
+              HostGuard.refusalOf,
+              'refusal',
               isA<HostBlocked>(),
             ),
           ),
@@ -269,8 +297,8 @@ void main() {
           dio.get<dynamic>(url),
           throwsA(
             isA<DioException>().having(
-              (e) => e.error,
-              'error',
+              HostGuard.refusalOf,
+              'refusal',
               isA<HostBlocked>().having((b) => b.isDev, 'isDev', isFalse),
             ),
           ),
@@ -300,8 +328,8 @@ void main() {
           dio.get<dynamic>('http://192.168.1.21:3000/a'),
           throwsA(
             isA<DioException>().having(
-              (e) => e.error,
-              'error',
+              HostGuard.refusalOf,
+              'refusal',
               isA<HostBlocked>(),
             ),
           ),
@@ -387,6 +415,45 @@ void main() {
         reason: 'the first attempt went out; the plain HTTP replay did not',
       );
     });
+
+    test('a replay whose address moved to another host while the session '
+        'renewed is not sent with the token', () async {
+      await session.saveTokens(accessToken: 'access-0', refreshToken: 'r-0');
+      final adapter = ScriptedAdapter((options, _) {
+        if (options.uri.host != 'api.example.test') {
+          return jsonReply(200, {'ok': true});
+        }
+        return jsonReply(401, {'code': 'ANY'});
+      });
+      final request = RequestOptions(
+        baseUrl: 'https://api.example.test',
+        path: '/a',
+      );
+      final dio = StudentDio.create(
+        env: prod(),
+        appVersion: '0.1.0',
+        languageTag: () => 'en',
+        session: session,
+        // https, so the guard would let it through: only the token rule
+        // stands between the renewed token and the other host.
+        renewer: _RenewAndMove(session, request, 'https://cdn.example.test/a'),
+        logging: false,
+        adapter: adapter,
+        retryDelays: const [Duration.zero],
+      );
+
+      await expectLater(
+        dio.fetch<dynamic>(request),
+        throwsA(isA<DioException>()),
+      );
+      expect(adapter.seen.map((r) => r.uri.toString()), [
+        'https://api.example.test/a',
+      ]);
+      expect(
+        adapter.seen.map((r) => r.header('Authorization')),
+        everyElement(isNot(contains('renewed'))),
+      );
+    });
   });
 
   group('logging', () {
@@ -423,6 +490,51 @@ void main() {
   });
 
   group('errors become typed failures (item 7)', () {
+    test('a request the host rule refuses is a typed failure too, and passes '
+        'through the interceptors after the guard', () async {
+      final adapter = ScriptedAdapter((_, _) => jsonReply(200, {'ok': true}));
+      final dio = client(adapter);
+      final seenAfterGuard = <DioException>[];
+      // Just before ErrorMappingInterceptor, the last one.
+      dio.interceptors.insert(
+        dio.interceptors.length - 1,
+        InterceptorsWrapper(
+          onError: (e, handler) {
+            seenAfterGuard.add(e);
+            handler.next(e);
+          },
+        ),
+      );
+
+      final error = await dio
+          .get<dynamic>('https://example.com/a')
+          .then<DioException?>(
+            (_) => null,
+            onError: (Object e) => e as DioException,
+          );
+
+      expect(seenAfterGuard, hasLength(1));
+      expect(error!.error, isA<UnknownFailure>());
+      expect(error.asFailure.message, contains('HostBlocked'));
+      expect(error.asFailure.message, contains('example.com'));
+      expect(HostGuard.refusalOf(error), isA<HostBlocked>());
+      expect(adapter.seen, isEmpty, reason: 'nothing reached the wire');
+    });
+
+    test('a request the guard let through carries no refusal', () async {
+      final adapter = ScriptedAdapter((_, _) => jsonReply(404, {}));
+
+      final error = await client(adapter)
+          .get<dynamic>('/a')
+          .then<DioException?>(
+            (_) => null,
+            onError: (Object e) => e as DioException,
+          );
+
+      expect(HostGuard.refusalOf(error!), isNull);
+      expect(error.asFailure, isA<NotFoundFailure>());
+    });
+
     test(
       'the {code, message, details, request_id} shape keeps its request id',
       () async {

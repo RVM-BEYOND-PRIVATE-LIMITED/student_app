@@ -139,7 +139,7 @@ class _LanguageOption extends StatelessWidget {
       value: selected ? selectedLabel : null,
       excludeSemantics: true,
       child: Material(
-        color: selected ? const Color(0xFFFFF7ED) : StudentColors.surface,
+        color: selected ? StudentColors.accentTint : StudentColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: radius,
           side: BorderSide(

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The launcher label (AndroidManifest.xml android:label). The same
+         words as appTitle in lib/l10n/app_en.arb. -->
+    <string name="app_name">RVM Student</string>
+</resources>

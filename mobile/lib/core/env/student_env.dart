@@ -23,7 +23,10 @@ class StudentEnvError extends Error {
 
 /// Which Student API this build talks to, read from two dart-defines:
 ///
-/// * `FLAVOR`: `dev` (the default) or `prod`.
+/// * `FLAVOR`: `dev` or `prod`. Left out, a release build is `prod` and
+///   every other build (debug, profile) is `dev`: a release APK is never a
+///   dev build, with its Developer menu and loopback host, unless
+///   `--dart-define=FLAVOR=dev` asks for one on purpose.
 /// * `STUDENT_API_HOST`: the Student API's base address, for example
 ///   `http://10.0.2.2:3000` (the emulator) or `https://…` for production.
 ///
@@ -66,9 +69,17 @@ class StudentEnv {
 
   /// The configuration for [flavor] and [host], as the dart-defines give
   /// them. Throws [StudentEnvError] for a configuration that must not start.
-  static StudentEnv resolve({required String flavor, required String host}) {
+  ///
+  /// [releaseMode] is whether this is a release build ([kReleaseMode]); it
+  /// decides the flavor when [flavor] is empty.
+  static StudentEnv resolve({
+    required String flavor,
+    required String host,
+    bool releaseMode = kReleaseMode,
+  }) {
     final resolvedFlavor = switch (flavor.trim().toLowerCase()) {
-      '' || 'dev' => StudentFlavor.dev,
+      '' => releaseMode ? StudentFlavor.prod : StudentFlavor.dev,
+      'dev' => StudentFlavor.dev,
       'prod' => StudentFlavor.prod,
       final other => throw StudentEnvError(
         'Unknown FLAVOR "$other". Use --dart-define=FLAVOR=dev or prod.',
@@ -77,9 +88,13 @@ class StudentEnv {
     final trimmed = host.trim();
     if (trimmed.isEmpty) {
       if (resolvedFlavor == StudentFlavor.prod) {
+        final why = flavor.trim().isEmpty
+            ? ' (a release build with no FLAVOR is prod; '
+                  '--dart-define=FLAVOR=dev makes a dev build)'
+            : '';
         throw StudentEnvError(
           'A prod build needs the Student API address: '
-          '--dart-define=STUDENT_API_HOST=https://…',
+          '--dart-define=STUDENT_API_HOST=https://…$why',
         );
       }
       return StudentEnv._(

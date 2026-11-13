@@ -17,8 +17,8 @@ class AppInfo extends Equatable {
   final String buildNumber;
 
   /// False when Android could not say which build this is. The launch check
-  /// then lets the app through (it fails open), since `0.0.0` is not this
-  /// build's real version.
+  /// then lets the app through (it fails open), and requests carry no
+  /// `X-App-Version`, since `0.0.0` is not this build's real version.
   final bool isKnown;
 
   /// Both together, as people read them: `0.1.0 (1)`.

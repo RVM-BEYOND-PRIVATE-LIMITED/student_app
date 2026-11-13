@@ -33,8 +33,21 @@ class _StudentAppState extends State<StudentApp> {
     isDev: getIt<StudentEnv>().isDev,
   );
 
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // Back in the foreground: the offline banner checks again at once.
+    _lifecycle = AppLifecycleListener(
+      onResume: () =>
+          getIt<ConnectivityBloc>().add(const ConnectivityResumed()),
+    );
+  }
+
   @override
   void dispose() {
+    _lifecycle.dispose();
     _router.dispose();
     super.dispose();
   }
