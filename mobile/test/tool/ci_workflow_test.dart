@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// student_app #8, items 5, 6 and 13: what mobile-ci.yml runs on every pull
-/// request that touches mobile/. Read from the workflow file (`flutter test`
-/// runs in mobile/).
+/// student_app #8, items 5, 6 and 13, and #9: what mobile-ci.yml runs on
+/// every pull request that touches mobile/. Read from the workflow file
+/// (`flutter test` runs in mobile/).
 void main() {
   final workflow = File(
     '../.github/workflows/mobile-ci.yml',
@@ -25,6 +25,29 @@ void main() {
       startsWith(
         '- name: Android only\n        run: bash tool/android_only.sh',
       ),
+    );
+    expect(
+      check,
+      lessThan(step(r'Install Flutter ${{ env.FLUTTER_VERSION }}')),
+    );
+  });
+
+  test('the no-AI-features check runs right after Android only, before '
+      'Flutter is installed', () {
+    final android = step('Android only');
+    final check = step('No AI features');
+
+    expect(
+      workflow.substring(check),
+      startsWith(
+        '- name: No AI features\n        run: bash tool/no_ai_features.sh',
+      ),
+    );
+    expect(check, greaterThan(android));
+    // No other step between the two.
+    expect(
+      '- name: '.allMatches(workflow.substring(android, check)),
+      hasLength(1),
     );
     expect(
       check,
