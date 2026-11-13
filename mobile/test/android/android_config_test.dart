@@ -91,7 +91,12 @@ void main() {
       }
     });
 
-    test('plain HTTP only to this computer, and only in debug builds', () {
+    // This file covers Android's own network stack (Java and Kotlin code)
+    // only. The app's API traffic goes through dart:io, which the Flutter
+    // embedder does not hold to it: that rule is HostGuard's, tested with
+    // real sockets in test/core/network/host_guard_test.dart.
+    test('Android\'s own network stack (not Dart): plain HTTP only to this '
+        'computer, only in debug builds', () {
       expect(read(mainManifest), isNot(contains('usesCleartextTraffic')));
       expect(read(mainManifest), isNot(contains('networkSecurityConfig')));
       expect(read(debugManifest), contains('@xml/network_security_config'));

@@ -134,16 +134,65 @@ void main() {
       );
     });
 
-    test('a prod build is not limited by the dev rule', () {
+    test('a dev build may use plain HTTP to the host set on purpose', () {
       final env = StudentEnv.resolve(
-        flavor: 'prod',
-        host: 'https://api.example.test',
+        flavor: 'dev',
+        host: 'http://192.168.1.20:3000',
       );
 
+      expect(
+        env.allowsRequestTo(Uri.parse('http://192.168.1.20:3000/a')),
+        isTrue,
+      );
+      expect(
+        env.allowsRequestTo(Uri.parse('http://192.168.1.21:3000/a')),
+        isFalse,
+      );
+    });
+  });
+
+  group('which addresses a prod build may reach', () {
+    final env = StudentEnv.resolve(
+      flavor: 'prod',
+      host: 'https://api.example.test',
+    );
+
+    test('https only: plain HTTP never leaves it, to any host', () {
       expect(
         env.allowsRequestTo(Uri.parse('https://api.example.test/a')),
         isTrue,
       );
+      for (final plain in [
+        'http://api.example.test/a',
+        'HTTP://api.example.test/a',
+        'http://example.com/a',
+        'http://127.0.0.1:3000/a',
+        'http://10.0.2.2:3000/a',
+      ]) {
+        expect(env.allowsRequestTo(Uri.parse(plain)), isFalse, reason: plain);
+      }
+    });
+  });
+
+  group('in every flavor', () {
+    test('only http(s) addresses that name a host', () {
+      for (final env in [
+        StudentEnv.resolve(flavor: 'dev', host: ''),
+        StudentEnv.resolve(flavor: 'prod', host: 'https://api.example.test'),
+      ]) {
+        for (final bad in [
+          'ws://127.0.0.1:3000/a',
+          'ftp://127.0.0.1/a',
+          'file:///etc/hosts',
+          '/a',
+        ]) {
+          expect(
+            env.allowsRequestTo(Uri.parse(bad)),
+            isFalse,
+            reason: '${env.flavor} $bad',
+          );
+        }
+      }
     });
 
     test('loopback means 127.0.0.0/8, ::1, localhost and 10.0.2.2', () {

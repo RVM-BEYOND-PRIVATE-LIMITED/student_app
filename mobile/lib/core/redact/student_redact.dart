@@ -10,7 +10,8 @@ import 'package:core_network/core_network.dart';
 ///
 /// * tokens: `Bearer …`, anything shaped like a JWT, and the value of any key
 ///   that names a token, password, OTP, PIN, secret, session or cookie;
-/// * one-time codes written after "OTP", "code" or "PIN".
+/// * one-time codes written after "OTP", "code" or "PIN";
+/// * email addresses, wherever they are.
 ///
 /// It only ever removes text, so it is always on.
 abstract final class StudentRedact {
@@ -37,6 +38,11 @@ abstract final class StudentRedact {
     caseSensitive: false,
   );
 
+  /// `name@example.com`: a local part, `@`, and a domain ending in letters.
+  static final _email = RegExp(
+    r'[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}\b',
+  );
+
   /// [input] with every secret and every piece of personal data replaced by
   /// [mask].
   static String text(String input) {
@@ -50,7 +56,8 @@ abstract final class StudentRedact {
               : '';
           return '${m[1]}${m[2]}${m[1]}${m[3]}$quote$mask$quote';
         })
-        .replaceAllMapped(_codePhrase, (m) => '${m[1]}${m[2]}$mask');
+        .replaceAllMapped(_codePhrase, (m) => '${m[1]}${m[2]}$mask')
+        .replaceAll(_email, mask);
     return Redact.text(withoutSecrets);
   }
 }

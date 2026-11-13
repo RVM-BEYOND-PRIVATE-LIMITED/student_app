@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rvm_student/core/app_info.dart';
 import 'package:rvm_student/core/crash/crash_log.dart';
 import 'package:rvm_student/core/env/student_env.dart';
 import 'package:rvm_student/core/version/version_gate.dart';
@@ -164,6 +165,26 @@ void main() {
       ).launch(tester);
 
       expect(find.byType(WelcomeScreen), findsOneWidget);
+    });
+
+    testWidgets('a build that cannot read its own version is never held '
+        '(fail open)', (tester) async {
+      final source = FakeVersionSource(
+        () async => const MinimumVersionKnown('9.0.0'),
+      );
+      await AppHarness(
+        store: FakeSecureStore({LanguageStore.key: 'en'}),
+        versionSource: source,
+        // What AppInfo.load gives when Android cannot say.
+        appInfo: const AppInfo(
+          version: '0.0.0',
+          buildNumber: '0',
+          isKnown: false,
+        ),
+      ).launch(tester);
+
+      expect(find.byType(WelcomeScreen), findsOneWidget);
+      expect(find.byType(UpdateRequiredScreen), findsNothing);
     });
 
     testWidgets('this build publishes no minimum, so it opens', (tester) async {

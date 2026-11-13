@@ -4,7 +4,9 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- Cleartext HTTP to the loopback Student API only (see
-         res/xml/network_security_config.xml). Release builds do not get it. -->
+    <!-- Android's own network stack only (Java/Kotlin): cleartext to this
+         computer in debug builds (res/xml/network_security_config.xml).
+         Dart traffic, the Student API's included, is not covered by it: see
+         lib/core/network/host_guard.dart. -->
     <application android:networkSecurityConfig="@xml/network_security_config" />
 </manifest>

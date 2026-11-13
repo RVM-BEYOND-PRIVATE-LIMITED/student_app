@@ -113,12 +113,12 @@ jobs:
           {
             echo "### Student app APK size (release, split per ABI)"
             echo
-            echo "| APK | Bytes | MB |"
+            echo "| APK | Bytes | MiB |"
             echo "| --- | ---: | ---: |"
             for apk in build/app/outputs/flutter-apk/app-*-release.apk; do
               bytes=$(stat -c %s "$apk")
-              mb=$(awk -v b="$bytes" 'BEGIN { printf "%.2f", b / 1048576 }')
-              echo "| $(basename "$apk") | $bytes | $mb |"
+              mib=$(awk -v b="$bytes" 'BEGIN { printf "%.2f", b / 1048576 }')
+              echo "| $(basename "$apk") | $bytes | $mib |"
             done
             echo
             echo "Report only: no size budget is set (student_app #13)."

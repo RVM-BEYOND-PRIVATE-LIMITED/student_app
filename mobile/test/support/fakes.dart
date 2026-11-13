@@ -18,12 +18,17 @@ class FakeSecureStore extends SecureStore {
   Object? failReads;
   Object? failWrites;
 
+  /// Set to make reads wait until it completes, the way a stuck Keystore
+  /// would.
+  Completer<void>? holdReads;
+
   int reads = 0;
   int writes = 0;
 
   @override
   Future<String?> read({required String key}) async {
     reads++;
+    if (holdReads != null) await holdReads!.future;
     if (failReads != null) throw failReads!;
     return values[key];
   }
@@ -48,16 +53,19 @@ class FakeSecureStore extends SecureStore {
 /// What one request looked like when it reached the wire.
 class SeenRequest {
   SeenRequest(this.options)
-    : headers = {
+    : uri = options.uri,
+      headers = {
         for (final e in options.headers.entries)
           e.key.toLowerCase(): '${e.value}',
       };
 
   final RequestOptions options;
+
+  /// The address as it was sent (the options object may change later).
+  final Uri uri;
   final Map<String, String> headers;
 
   String get method => options.method;
-  Uri get uri => options.uri;
 
   String? header(String name) => headers[name.toLowerCase()];
 

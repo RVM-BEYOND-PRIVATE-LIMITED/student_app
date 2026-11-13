@@ -30,6 +30,7 @@ class AppHarness {
     StudentEnv? env,
     CrashLogStore? crashLog,
     this.httpAdapter,
+    this.appInfo = testAppInfo,
   }) : store = store ?? FakeSecureStore(),
        env = env ?? StudentEnv.resolve(flavor: 'dev', host: ''),
        crashLog = crashLog ?? MemoryCrashLogStore();
@@ -42,6 +43,9 @@ class AppHarness {
 
   /// Stands in for the network under the app's Student API client.
   final HttpClientAdapter? httpAdapter;
+
+  /// The installed build, as Android reports it.
+  final AppInfo appInfo;
 
   final StreamController<bool> online = StreamController<bool>.broadcast();
 
@@ -64,7 +68,7 @@ class AppHarness {
     final saved = await LanguageStore(store).read();
     configureDependencies(
       env: env,
-      appInfo: testAppInfo,
+      appInfo: appInfo,
       secureStore: store,
       crashLog: crashLog,
       connectivity: online.stream,

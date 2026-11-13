@@ -31,10 +31,11 @@ class NoSessionRenewer implements SessionRenewer {
 ///   it.
 /// * A request whose token is already older than the session's current one
 ///   is sent again with the current token, without another renewal.
-/// * The second attempt goes through [replayDio], a client with no
-///   interceptors, so a 401 on it cannot start another renewal. It replays
-///   the same request options, so it carries the same `Idempotency-Key`,
-///   `X-App-Version` and `Accept-Language` as the first attempt.
+/// * The second attempt goes through [replayDio], a client without this
+///   interceptor (the student client gives it only the `HostGuard`), so a
+///   401 on it cannot start another renewal. It replays the same request
+///   options, so it carries the same `Idempotency-Key`, `X-App-Version` and
+///   `Accept-Language` as the first attempt.
 /// * A request marked with [skipAuthKey] (a sign-in step) carries no token,
 ///   and its 401 is about what it sent, so it never touches the session.
 ///
@@ -45,6 +46,7 @@ class StudentAuthInterceptor extends Interceptor {
     required StudentSession session,
     required Dio replayDio,
     SessionRenewer renewer = const NoSessionRenewer(),
+    this.sessionTimeout = const Duration(seconds: 5),
   }) : _session = session,
        _replayDio = replayDio,
        _renewer = renewer;
@@ -52,6 +54,12 @@ class StudentAuthInterceptor extends Interceptor {
   final StudentSession _session;
   final Dio _replayDio;
   final SessionRenewer _renewer;
+
+  /// How long reading or ending the session may take. Secure storage can
+  /// hang (a stuck Keystore), and dio's own timeouts start only once the
+  /// request is on its way, so without this a hung read would hold every
+  /// request. A read that runs out is treated like a read that failed.
+  final Duration sessionTimeout;
 
   /// `Options(extra: {StudentAuthInterceptor.skipAuthKey: true})` for a
   /// request that must not carry the session's token.
@@ -140,18 +148,18 @@ class StudentAuthInterceptor extends Interceptor {
 
   Future<String?> _currentToken() async {
     try {
-      final token = await _session.accessToken();
+      final token = await _session.accessToken().timeout(sessionTimeout);
       return token == null || token.isEmpty ? null : token;
     } catch (_) {
-      // Secure storage could not be read: send the request without a token
-      // and let the server answer.
+      // Secure storage could not be read in time: send the request without a
+      // token and let the server answer.
       return null;
     }
   }
 
   Future<void> _endSession() async {
     try {
-      await _session.endSession();
+      await _session.endSession().timeout(sessionTimeout);
     } catch (_) {
       // The refusal still reaches the screen.
     }

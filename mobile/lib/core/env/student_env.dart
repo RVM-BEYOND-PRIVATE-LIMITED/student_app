@@ -112,14 +112,24 @@ class StudentEnv {
     );
   }
 
-  /// Whether this build may send a request to [uri].
+  /// Whether this build may send a request to [uri]. `HostGuard` asks before
+  /// every request, in every flavor, and a refused request sends nothing.
   ///
-  /// A dev build may reach this computer, and the host the developer set on
-  /// purpose; any other host is refused before a byte is sent (see
-  /// `DevHostGuard`). A prod build is not limited here: it has no default
-  /// host, so it only ever knows the address its release pipeline gave it.
+  /// * Only `http` and `https` addresses with a host, in every flavor.
+  /// * A prod build sends https only, to any host: plain HTTP never leaves
+  ///   it. It has no default host either, so it only knows the address its
+  ///   release pipeline gave it.
+  /// * A dev build may reach this computer and the host the developer set on
+  ///   purpose, over http or https; any other host is refused.
+  ///
+  /// Android's network security config plays no part: the Flutter Android
+  /// embedder does not apply it to Dart sockets, so this is the rule.
   bool allowsRequestTo(Uri uri) {
-    if (!isDev) return true;
+    final scheme = uri.scheme.toLowerCase();
+    if ((scheme != 'http' && scheme != 'https') || uri.host.isEmpty) {
+      return false;
+    }
+    if (!isDev) return scheme == 'https';
     if (isLoopbackHost(uri.host)) return true;
     return hostSetOnPurpose &&
         uri.host.toLowerCase() == apiBaseUrl.host.toLowerCase();

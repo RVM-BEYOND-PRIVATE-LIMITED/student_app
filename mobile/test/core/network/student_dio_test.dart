@@ -5,7 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rvm_student/core/env/student_env.dart';
-import 'package:rvm_student/core/network/dev_host_guard.dart';
+import 'package:rvm_student/core/network/host_guard.dart';
 import 'package:rvm_student/core/network/student_auth_interceptor.dart';
 import 'package:rvm_student/core/network/student_dio.dart';
 import 'package:rvm_student/core/network/student_headers_interceptor.dart';
@@ -211,7 +211,7 @@ void main() {
             isA<DioException>().having(
               (e) => e.error,
               'error',
-              isA<DevHostBlocked>(),
+              isA<HostBlocked>(),
             ),
           ),
         );
@@ -228,17 +228,164 @@ void main() {
 
       expect(adapter.seen, hasLength(2));
     });
+  });
 
-    test('a prod build has no dev guard', () {
-      final dio = client(
-        ScriptedAdapter((_, _) => jsonReply(200, {})),
-        env: StudentEnv.resolve(
-          flavor: 'prod',
-          host: 'https://api.example.test',
+  group('the host rule runs in Dart, in every flavor (check 7)', () {
+    StudentEnv prod() =>
+        StudentEnv.resolve(flavor: 'prod', host: 'https://api.example.test');
+
+    test('the guard runs before every interceptor the app adds, dev and prod '
+        'alike', () {
+      for (final env in [StudentEnv.resolve(flavor: 'dev', host: ''), prod()]) {
+        final list = client(
+          ScriptedAdapter((_, _) => jsonReply(200, {})),
+          env: env,
+        ).interceptors.toList();
+        final guard = list.indexWhere((i) => i is HostGuard);
+
+        expect(guard, isNonNegative, reason: '${env.flavor}');
+        for (final later in [
+          list.indexWhere((i) => i is IdempotencyInterceptor),
+          list.indexWhere((i) => i is StudentHeadersInterceptor),
+          list.indexWhere((i) => i is RetryInterceptor),
+          list.indexWhere((i) => i is StudentAuthInterceptor),
+          list.indexWhere((i) => i is ErrorMappingInterceptor),
+        ]) {
+          expect(later, greaterThan(guard), reason: '${env.flavor}');
+        }
+      }
+    });
+
+    test('a prod build sends no plain HTTP, to any host', () async {
+      final adapter = ScriptedAdapter((_, _) => jsonReply(200, {'ok': true}));
+      final dio = client(adapter, env: prod());
+
+      for (final url in [
+        'http://api.example.test/a',
+        'http://example.com/a',
+        'http://127.0.0.1:3000/a',
+      ]) {
+        await expectLater(
+          dio.get<dynamic>(url),
+          throwsA(
+            isA<DioException>().having(
+              (e) => e.error,
+              'error',
+              isA<HostBlocked>().having((b) => b.isDev, 'isDev', isFalse),
+            ),
+          ),
+          reason: url,
+        );
+      }
+      expect(adapter.seen, isEmpty, reason: 'nothing reached the wire');
+
+      await dio.get<dynamic>('/a');
+      expect(adapter.seen.single.uri.toString(), 'https://api.example.test/a');
+    });
+
+    test(
+      'a dev build reaches the http host set on purpose, and no other',
+      () async {
+        final adapter = ScriptedAdapter((_, _) => jsonReply(200, {'ok': true}));
+        final dio = client(
+          adapter,
+          env: StudentEnv.resolve(
+            flavor: 'dev',
+            host: 'http://192.168.1.20:3000',
+          ),
+        );
+
+        await dio.get<dynamic>('/a');
+        await expectLater(
+          dio.get<dynamic>('http://192.168.1.21:3000/a'),
+          throwsA(
+            isA<DioException>().having(
+              (e) => e.error,
+              'error',
+              isA<HostBlocked>(),
+            ),
+          ),
+        );
+
+        expect(adapter.seen.map((r) => r.uri.toString()), [
+          'http://192.168.1.20:3000/a',
+        ]);
+      },
+    );
+
+    test('no request follows a redirect, even one that asks to', () async {
+      final adapter = ScriptedAdapter((_, _) => jsonReply(200, {'ok': true}));
+      final dio = client(adapter, env: prod());
+
+      await dio.get<dynamic>('/a');
+      await dio.get<dynamic>(
+        '/a',
+        options: Options(followRedirects: true, maxRedirects: 5),
+      );
+
+      expect(adapter.seen.map((r) => r.options.followRedirects), [
+        false,
+        false,
+      ]);
+    });
+
+    test('a 3xx reply is an error, not a hop to another address', () async {
+      final adapter = ScriptedAdapter(
+        (_, _) => ResponseBody.fromString(
+          '',
+          302,
+          headers: {
+            'location': ['http://example.com/elsewhere'],
+          },
         ),
       );
 
-      expect(dio.interceptors.whereType<DevHostGuard>(), isEmpty);
+      await expectLater(
+        client(adapter, env: prod()).get<dynamic>('/a'),
+        throwsA(
+          isA<DioException>().having(
+            (e) => e.response?.statusCode,
+            'status',
+            302,
+          ),
+        ),
+      );
+      expect(adapter.seen, hasLength(1));
+    });
+
+    test('the replay after a renewal is checked by the guard too', () async {
+      await session.saveTokens(accessToken: 'access-0', refreshToken: 'r-0');
+      final adapter = ScriptedAdapter((options, _) {
+        final auth = '${options.headers['Authorization']}';
+        return auth.contains('renewed')
+            ? jsonReply(200, {'ok': true})
+            : jsonReply(401, {'code': 'ANY'});
+      });
+      final request = RequestOptions(
+        baseUrl: 'https://api.example.test',
+        path: '/a',
+      );
+      final dio = StudentDio.create(
+        env: prod(),
+        appVersion: '0.1.0',
+        languageTag: () => 'en',
+        session: session,
+        // The request's address turns into plain HTTP between the attempts.
+        renewer: _RenewAndMove(session, request, 'http://api.example.test/a'),
+        logging: false,
+        adapter: adapter,
+        retryDelays: const [Duration.zero],
+      );
+
+      await expectLater(
+        dio.fetch<dynamic>(request),
+        throwsA(isA<DioException>()),
+      );
+      expect(
+        adapter.seen.map((r) => r.uri.toString()),
+        ['https://api.example.test/a'],
+        reason: 'the first attempt went out; the plain HTTP replay did not',
+      );
     });
   });
 
@@ -366,4 +513,24 @@ void main() {
       expect(adapter.seen.single.header('Authorization'), isNull);
     });
   });
+}
+
+/// Renews, then changes [request]'s address before it is sent again, to
+/// show that the replay passes through the guard.
+class _RenewAndMove implements SessionRenewer {
+  _RenewAndMove(this.session, this.request, this.movedTo);
+
+  final StudentSession session;
+  final RequestOptions request;
+  final String movedTo;
+
+  @override
+  Future<bool> renew() async {
+    await session.saveTokens(
+      accessToken: 'access-renewed',
+      refreshToken: 'r-renewed',
+    );
+    request.path = movedTo;
+    return true;
+  }
 }

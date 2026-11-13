@@ -110,6 +110,20 @@ void main() {
           const GatePass(),
         );
       });
+
+      test('when this build could not read its own version', () async {
+        final source = FakeVersionSource(
+          () async => const MinimumVersionKnown('9.0.0'),
+        );
+
+        final decision = await VersionGate(
+          source: source,
+          installedVersion: null,
+        ).check();
+
+        expect(decision, const GatePass());
+        expect(source.calls, 0);
+      });
     });
 
     test('this build\'s source publishes nothing, so the app opens', () async {

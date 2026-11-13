@@ -230,4 +230,34 @@ void main() {
     expect(renewer.calls, 0);
     expect(await session.hasSession(), isTrue);
   });
+
+  test('a session read that hangs does not hold the request: it goes on '
+      'without a token once the read runs out of time', () async {
+    // A fresh launch whose secure storage never answers (a stuck Keystore).
+    final stuck = FakeSecureStore({StudentSession.accessTokenKey: 'access-9'})
+      ..holdReads = Completer<void>();
+    final adapter = ScriptedAdapter((_, _) => jsonReply(200, {'ok': true}));
+    final dio = Dio(BaseOptions(baseUrl: 'http://127.0.0.1:3000'))
+      ..httpClientAdapter = adapter
+      ..interceptors.add(
+        StudentAuthInterceptor(
+          session: StudentSession(stuck),
+          replayDio: Dio(),
+          sessionTimeout: const Duration(milliseconds: 50),
+        ),
+      );
+
+    final res = await dio.get<dynamic>('/a');
+
+    expect(res.statusCode, 200);
+    expect(adapter.seen.single.header('Authorization'), isNull);
+    stuck.holdReads!.complete();
+  });
+
+  test('session reads wait five seconds at most by default', () {
+    expect(
+      StudentAuthInterceptor(session: session, replayDio: Dio()).sessionTimeout,
+      const Duration(seconds: 5),
+    );
+  });
 }

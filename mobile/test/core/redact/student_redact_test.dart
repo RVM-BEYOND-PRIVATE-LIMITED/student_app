@@ -62,6 +62,21 @@ void main() {
       expect(out, contains('B-12'));
     });
 
+    test('email addresses, wherever they are', () {
+      for (final email in [
+        'test.student@example.com',
+        'Test_Student+rvm@mail.example.co.in',
+      ]) {
+        final out = clean('StateError: no account for $email (code 7)');
+        expect(out, isNot(contains('@')), reason: email);
+        expect(out, 'StateError: no account for $mask (code 7)', reason: email);
+      }
+      expect(
+        clean('{"email": "test.student@example.com"}'),
+        '{"email": "$mask"}',
+      );
+    });
+
     test('ordinary text, dates, times, status codes and short ids stay', () {
       const text =
           'StateError: list empty at 2026-11-12 10:30, HTTP 503, item 42, '

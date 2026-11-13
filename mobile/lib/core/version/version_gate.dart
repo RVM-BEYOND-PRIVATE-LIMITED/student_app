@@ -73,7 +73,8 @@ final class GateUpdateRequired extends GateDecision {
 /// the app opens. A weak network must never lock a student out, and the
 /// server refuses a too-old build on its own from the `X-App-Version` every
 /// call carries. Only a minimum that was read, and that is newer than the
-/// installed build, blocks the app.
+/// installed build, blocks the app. A build that could not read its own
+/// version is never blocked either.
 class VersionGate {
   VersionGate({
     required VersionSource source,
@@ -83,17 +84,20 @@ class VersionGate {
 
   final VersionSource _source;
 
-  /// The installed build's version name, for example `0.1.0`.
-  final String installedVersion;
+  /// The installed build's version name, for example `0.1.0`, or null when
+  /// Android could not say (see `AppInfo.isKnown`).
+  final String? installedVersion;
 
   /// How long the check may take before the app opens anyway.
   final Duration timeout;
 
   Future<GateDecision> check() async {
+    final installed = installedVersion;
+    if (installed == null) return const GatePass();
     try {
       final minimum = await _source.minimumVersion().timeout(timeout);
       if (minimum is MinimumVersionKnown &&
-          AppVersion.isOlder(installedVersion, minimum.version)) {
+          AppVersion.isOlder(installed, minimum.version)) {
         return GateUpdateRequired(minimum.version);
       }
       return const GatePass();

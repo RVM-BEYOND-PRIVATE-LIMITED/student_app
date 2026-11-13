@@ -80,13 +80,43 @@ flutter run              # dev build, Student API on this computer
   emulator can also use `--dart-define=STUDENT_API_HOST=http://10.0.2.2:3000`.
   A dev build never reaches a live host unless a developer sets one on
   purpose: every request to any other host is refused before anything is
-  sent (`lib/core/network/dev_host_guard.dart`). Plain HTTP is allowed only
-  to these loopback names, and only in debug builds
-  (`android/app/src/debug/res/xml/network_security_config.xml`).
+  sent.
 - **prod** needs an `https://` host. A prod build made without one does not
   start: it shows a short message and makes no request. No production
   address is written in the code; the release pipeline will pass it once the
-  host exists (student_app #20).
+  host exists (student_app #20). A release build made without
+  `--dart-define=FLAVOR=prod` is a dev build (the CI size build is one), so
+  the release pipeline must pass it.
+
+#### Which addresses a build may reach
+
+The rule is checked in Dart, before every request (a retry and a replay
+after renewal included), in every flavor and build mode, by `HostGuard`
+(`lib/core/network/host_guard.dart`):
+
+| Build | May reach |
+| --- | --- |
+| dev, no host | this computer only: 127.0.0.0/8, `localhost`, `::1`, `10.0.2.2`; http or https |
+| dev, `STUDENT_API_HOST` set | this computer and that host; http or https |
+| prod | https only, to any host: plain HTTP never leaves a prod build |
+
+- Redirects are never followed: `dart:io` follows them below the guard, so
+  a 3xx reaches the app as an error instead.
+- Android's network security config does **not** limit this traffic. dio
+  sends it through `dart:io`, and the Flutter 3.35.7 Android embedder does
+  not apply the config to Dart sockets: it reads a policy only from an
+  `io.flutter.network-policy` meta-data entry, which this app does not
+  declare, and otherwise lets Dart connect insecurely to any host.
+  `android/app/src/debug/res/xml/network_security_config.xml` covers only
+  Android's own network stack (Java/Kotlin code), which the Student API
+  client does not use. So a dev build with
+  `STUDENT_API_HOST=http://192.168.1.20:3000` does reach that address over
+  plain HTTP, because it was set on purpose.
+- DNS: core_network's `DohHttpClientAdapter` asks the phone's resolver
+  first. Only when that fails does it look the hostname up over
+  DNS-over-HTTPS at `https://1.1.1.1/dns-query` (Cloudflare), outside the
+  guard. That lookup carries the hostname only, never a path, header or
+  body. An IP address such as the dev default needs no lookup.
 
 The Scheduler_Backend #158 mock does not exist yet, so the Developer menu
 shows "not available yet" for the mock, the feature switches and the
@@ -97,7 +127,8 @@ minimum version.
 - Request logging (`LoggingInterceptor`) runs in debug builds only; a
   release build logs no request.
 - Uncaught errors (Flutter, platform dispatcher, zone) are cleaned of phone
-  numbers, OTPs, tokens and names (`lib/core/redact/student_redact.dart`)
+  numbers, OTPs, tokens, names and email addresses
+  (`lib/core/redact/student_redact.dart`)
   and kept on the phone only, in the app's private storage, out of backups.
   The Developer menu shows them. Sending crash reports off the phone is
   student_app #12 and needs an OK first.
@@ -147,7 +178,8 @@ sets no budget (student_app #13).
   ends the session.
 - The server's minimum version, feature switches and the student's stage:
   Scheduler_Backend #158. `VersionSource` answers "unknown" until then, so
-  the launch check lets the app through.
+  the launch check lets the app through. A build that cannot read its own
+  version is let through too.
 
 ## More
 

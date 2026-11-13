@@ -53,7 +53,7 @@ void configureDependencies({
         session: session,
         gate: VersionGate(
           source: versionSource,
-          installedVersion: appInfo.version,
+          installedVersion: appInfo.isKnown ? appInfo.version : null,
         ),
       ),
     )
