@@ -33,8 +33,10 @@ window, whatever the Dart build mode. That a release build is prod, with
 no Developer menu, is checked on the build itself (`tool/check_release.dart`).
 
 If the phone already has an RVM Student build signed with another key,
-`flutter run` cannot install over it: uninstall it first
-(`adb uninstall com.rvm.rvmstudent`).
+`flutter run` cannot install over it, so it uninstalls that build and
+installs again ("Uninstalling old version..."); that build's data, its
+sign-in included, goes with it. To remove it yourself first:
+`adb uninstall com.rvm.rvmstudent`.
 
 A dev build with no `STUDENT_API_HOST` reaches only this computer; the
 check needs no Student API.
