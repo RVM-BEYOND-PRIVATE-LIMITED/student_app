@@ -1,0 +1,6 @@
+# Test tags (student_app #11).
+tags:
+  # Golden images of the shared states (test/goldens/). Made and checked on
+  # Linux only. `flutter test --tags golden` runs them alone,
+  # `--exclude-tags golden` skips them, `--update-goldens` remakes them.
+  golden:

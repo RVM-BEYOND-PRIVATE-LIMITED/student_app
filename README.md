@@ -1,28 +1,25 @@
-# RVM Student App — Backend (M0 scaffold)
+# RVM Student app
 
-Spec: `docs/backend-spec.md`. Rules: `AGENTS.md`.
+> **The backend scaffold in this repository is NOT used.** The Student API is built inside the
+> Scheduler backend (decision of 12 November 2026: one backend). This repository holds the
+> Flutter app, the web version and the published API contract. The old scaffold is kept for
+> reference under `archive/m0-scaffold/`; nothing there is built, deployed or run.
 
-Monorepo (`pnpm` + `turbo`):
-- `apps/api` — Fastify TypeScript API + worker (single image, two processes)
-- `packages/openapi` — generated `openapi.yaml` (Zod is source of truth)
-- `infra/docker`, `infra/lightsail` — container + deploy
-- `mobile/` — Flutter placeholder (separate tooling)
+| Folder | What it is |
+|---|---|
+| `mobile/` | The RVM Student app: Flutter, Android only, English and Hindi. Start with `mobile/README.md`. |
+| `apps/` | The student web version will live in `apps/web` (not started). |
+| `packages/openapi/` | The Student API contract the apps are built against: a copy of the backend's contract. See its README. |
+| `archive/m0-scaffold/` | The 28 October backend scaffold. Not used. |
 
-Patterns ported from `Scheduler_Backend` (Express): trust-proxy=1, 401-vs-503 auth,
-`stripSecrets`, `auditContext`, JSON 404 for unknown `/v1/*`, in-process pg-boss worker.
+## Branches
 
-## Quickstart (staging only — never prod DB from dev)
+Work goes into `develop` by pull request. `main` takes pull requests only from `develop` or a
+`hotfix/*` branch (`promotion-guard`).
 
-```bash
-pnpm install
-cp .env.example .env   # fill staging values
-pnpm dev
-pnpm test
-pnpm lint
-pnpm typecheck
-pnpm openapi:build
-pnpm db:migrate        # staging only
-```
+## Checks
 
-M0 entry: read `AGENTS.md` + `docs/backend-spec.md`. Do M0 only. Begin with
-read-only schema discovery against staging and report before any migration.
+- `mobile-ci`: every pull request that touches `mobile/`.
+- `contract-ci`: every pull request that touches `packages/openapi/`.
+
+No workflow here deploys anything, and none needs a secret.

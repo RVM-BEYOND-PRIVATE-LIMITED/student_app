@@ -1,0 +1,86 @@
+import 'package:core_auth/core_auth.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart';
+import 'package:get_it/get_it.dart';
+
+import 'core/app_info.dart';
+import 'core/crash/crash_log.dart';
+import 'core/env/student_env.dart';
+import 'core/network/student_dio.dart';
+import 'core/security/device_hints.dart';
+import 'core/session/student_session.dart';
+import 'core/version/version_gate.dart';
+import 'features/connectivity/connectivity_bloc.dart';
+import 'features/language/bloc/language_bloc.dart';
+import 'features/language/language_store.dart';
+import 'features/startup/bloc/startup_bloc.dart';
+import 'l10n/l10n.dart';
+
+final GetIt getIt = GetIt.instance;
+
+/// Wires the app once at launch. Tests call it with their own fakes.
+///
+/// [connectivity] is the online/offline stream (core_network's
+/// `ConnectivityService.onStatusChanged()` in the app) and
+/// [connectivityCheck] one check of it (`ConnectivityService.isOnline`),
+/// which lets the offline banner check again while it shows; without it the
+/// banner only follows the stream. [versionSource] is
+/// where the launch check reads the minimum version; until Scheduler_Backend
+/// #158 publishes one, nothing does. [httpAdapter] replaces the network in
+/// tests. [deviceHints] reads the phone's device hints (student_app #8,
+/// item 2); they are for messages only and never decide anything.
+void configureDependencies({
+  required StudentEnv env,
+  required AppInfo appInfo,
+  required SecureStore secureStore,
+  required CrashLogStore crashLog,
+  required Stream<bool> connectivity,
+  Future<bool> Function()? connectivityCheck,
+  required List<Locale> deviceLocales,
+  AppLanguage? savedLanguage,
+  VersionSource versionSource = const UnpublishedVersionSource(),
+  HttpClientAdapter? httpAdapter,
+  DeviceHintsSource? deviceHints,
+}) {
+  final session = StudentSession(secureStore);
+  final language = LanguageBloc(
+    store: LanguageStore(secureStore),
+    deviceDefault: AppLanguage.fromDevice(deviceLocales),
+    saved: savedLanguage,
+  );
+  getIt
+    ..registerSingleton<StudentEnv>(env)
+    ..registerSingleton<AppInfo>(appInfo)
+    ..registerSingleton<SecureStore>(secureStore)
+    ..registerSingleton<CrashLogStore>(crashLog)
+    ..registerSingleton<DeviceHintsSource>(deviceHints ?? PlatformDeviceHints())
+    ..registerSingleton<StudentSession>(session)
+    ..registerSingleton<LanguageBloc>(language)
+    ..registerSingleton<StartupBloc>(
+      StartupBloc(
+        session: session,
+        gate: VersionGate(
+          source: versionSource,
+          installedVersion: appInfo.isKnown ? appInfo.version : null,
+        ),
+      ),
+    )
+    ..registerSingleton<ConnectivityBloc>(
+      ConnectivityBloc(connectivity, check: connectivityCheck),
+    )
+    // The Student API client. Nothing calls it yet: its calls come with the
+    // generated client once the contract is published (student_app #10).
+    ..registerLazySingleton<Dio>(
+      () => StudentDio.create(
+        env: env,
+        // An unknown build sends no version rather than a made-up one.
+        appVersion: appInfo.isKnown ? appInfo.version : null,
+        languageTag: () => language.state.language.name,
+        session: session,
+        adapter: httpAdapter,
+      ),
+    );
+}
+
+/// Undoes [configureDependencies] (tests).
+Future<void> resetDependencies() => getIt.reset();

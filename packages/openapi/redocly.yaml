@@ -1,0 +1,12 @@
+# Lint rules for the published contract (student_app #10).
+extends:
+  - recommended
+rules:
+  # Every reply is typed and every operation is named, so a Dart client generates cleanly.
+  operation-operationId: error
+  operation-operationId-unique: error
+  no-unused-components: warn
+  # A contract with no path is valid while nothing is published.
+  no-empty-servers: error
+  info-license: error
+  security-defined: off

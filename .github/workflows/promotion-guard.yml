@@ -1,0 +1,32 @@
+name: promotion-guard
+
+# A pull request into main must come from develop or from a hotfix/* branch
+# (student_app #20 item 12; the same rule as Scheduler_Backend #157).
+# This repository is on GitHub Free, so the rule is a failing check, not a branch protection.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  source-branch:
+    name: Check source branch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Only develop or hotfix/* may be merged into main
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "::error::Pull requests into main must come from a branch of this repository."
+            exit 1
+          fi
+          case "$HEAD_REF" in
+            develop|hotfix/*) echo "Source branch '$HEAD_REF' may be merged into main." ;;
+            *) echo "::error::'$HEAD_REF' cannot be merged into main. Merge it into develop first, then promote develop."; exit 1 ;;
+          esac

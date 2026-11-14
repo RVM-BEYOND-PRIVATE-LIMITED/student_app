@@ -2,8 +2,12 @@
   "$schema": "https://turbo.build/schema.json",
   "pipeline": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
     },
     "test": {},
     "lint": {},
@@ -11,12 +15,6 @@
     "dev": {
       "cache": false,
       "persistent": true
-    },
-    "openapi:build": {
-      "outputs": ["../../packages/openapi/openapi.yaml"]
-    },
-    "db:migrate": {
-      "cache": false
     }
   }
 }
