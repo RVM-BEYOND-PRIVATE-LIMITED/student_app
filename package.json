@@ -11,10 +11,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
-    "db:migrate": "pnpm --filter @rvm-student/api db:migrate",
-    "db:new": "pnpm --filter @rvm-student/api db:new",
-    "openapi:build": "pnpm --filter @rvm-student/api openapi:build"
+    "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

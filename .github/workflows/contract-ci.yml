@@ -1,0 +1,40 @@
+name: contract-ci
+
+# The published Student API contract in packages/openapi (student_app #10).
+#
+# The contract is a COPY of the backend's contract (the backend repository leads). This job
+# checks the copy: it is valid OpenAPI, a change always comes with a version bump, and every
+# path is under /v1. It builds, tests and deploys nothing else, and it needs no secret.
+on:
+  pull_request:
+    paths:
+      - 'packages/openapi/**'
+      - '.github/workflows/contract-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contract-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Lint the contract
+        run: npx --yes @redocly/cli@1.34.5 lint --config packages/openapi/redocly.yaml packages/openapi/openapi.yaml
+
+      - name: Guards (version bump, /v1 only, source commit)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node packages/openapi/tools/check-contract.mjs

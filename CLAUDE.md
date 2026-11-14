@@ -1,39 +1,32 @@
-# AGENTS.md — RVM student app backend
+# CLAUDE.md: RVM Student app repository
+
+This repository holds the Flutter student app (`mobile/`), the student web version (`apps/web`,
+not started) and the published Student API contract (`packages/openapi`). **It holds no
+backend.** The Student API is built in the backend repository, and backend rules live there.
 
 ## Hard rules (never break)
-1. The database is SHARED with production systems (ops web app, jobs portal, team app).
-   - Never connect to the production database from a dev or agent session. Use the staging project only.
-   - Never create, alter, drop or write to any object outside the `lms`, `lms_bridge` and `lms_jobs` schemas.
-   - Reading other schemas is allowed only through views in `lms_bridge` that a human approved.
-   - Every migration lives in `apps/api/migrations`, is reviewed by a human, and must be reversible or explicitly marked irreversible with a reason.
-2. Investigate before you change anything. Read existing code and schema first; report findings before mutating.
-   Raw command output (git, psql, test runner) beats your own summary. Paste it when reporting.
-3. Money is integer paise (`bigint`). Never floats. Never compute prices in the client.
-4. Every state change that matters writes an outbox event in the SAME transaction.
-5. Every mutating endpoint accepts `Idempotency-Key` and is safe to retry.
-6. No secrets in code, logs or test fixtures. Use env vars. Never log phone, Aadhaar, tokens or full names.
-7. Tests required: a domain change ships with unit tests; an endpoint ships with an integration test against a real Postgres (Testcontainers).
-8. Keep module boundaries: a module only touches its own tables; cross-module calls go through the module's public service interface.
-9. When the spec is ambiguous or conflicts with what you find, STOP and ask. List the options; don't pick silently.
+1. Do not build, run, deploy or copy from `archive/m0-scaffold/`. It is a replaced design, kept
+   for reference. Never apply its migration to any database.
+2. Never connect to any RVM database from this repository. Nothing here needs one.
+3. The contract in `packages/openapi/openapi.yaml` is a copy of the backend's. Never edit it to
+   lead the backend: a change arrives as a publish from the backend repository, with a version
+   bump and the source commit.
+4. Build the app against the published contract and its mock server, never against guesses.
+5. No secrets in code, logs, fixtures or workflow output. Signing keys and store credentials are
+   never kept here. Never log a phone number, an ID number, a token or a full name.
+6. Money is integer paise. The app never computes a price; it shows what the API returns.
+7. Android only. `mobile/` has no iOS, web or desktop target (`mobile/tool/android_only.sh`).
+8. Investigate before you change anything. Paste raw command output when reporting.
+9. When something is ambiguous or conflicts with what you find, stop and ask.
+
+## Branches
+Pull requests go into `develop`. `main` takes pull requests only from `develop` or `hotfix/*`.
 
 ## Commands
-- pnpm install / pnpm dev / pnpm test / pnpm lint / pnpm typecheck
-- pnpm db:migrate (staging only) / pnpm db:new <name>
-- pnpm openapi:build (regenerates packages/openapi/openapi.yaml)
+- App: see `mobile/README.md` (Flutter 3.35.7 exactly).
+- Contract: `npx @redocly/cli@1.34.5 lint --config packages/openapi/redocly.yaml packages/openapi/openapi.yaml`,
+  `node packages/openapi/tools/check-contract.mjs`, `node --test packages/openapi/tools/check-contract.test.mjs`.
 
 ## Definition of done
-lint + typecheck + tests green, OpenAPI updated, migration reviewed, no TODOs without an issue link.
-
----
-
-## Scheduler-backend patterns ported (must keep)
-
-Ported from `Scheduler_Backend` (Express JS) into this Fastify TypeScript service:
-
-- `trust proxy = 1` (single proxy, e.g. nginx/Lightsail). Rate limiters key on `req.ip`.
-- Rate limiters: login/OTP 10–20 per 15 min, `POST /auth/otp/*` strict, general API 300/min (tune to spec: 60/min per student + 3 OTP/phone/15min + 10/IP/hour).
-- Auth: 401 only for rejected/absent token; 503 for DB outage (never sign users out on server fault). `PASSWORD_CHANGED` invalidation via `iat` vs `password_changed_at`. Role expansion via `config/roles` equivalent.
-- `stripSecrets`: no password hash / token ever leaves the API, even on `select(*)`.
-- `auditContext`: every request gets correlation id, client address, route template (lazily resolved, raw URL never stored). `AUDIT_MODE=off` disables writes only, never the context.
-- Unknown `/v1/*` route is JSON 404 `{ code: 'NOT_FOUND' }`, never HTML.
-- In-process workers (no Redis): pg-boss queue in Postgres with `FOR UPDATE SKIP LOCKED` claiming, graceful SIGTERM/SIGINT shutdown, catch-up on boot (attendance settle / snapshot warm-up pattern).
+The checks for what you touched are green (`mobile-ci`, `contract-ci`), and nothing from the
+archive was reused.
