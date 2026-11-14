@@ -24,6 +24,18 @@ Splash, Update required, Language, the shared states (skeleton, empty, error
 with request id, offline banner) and a dev-only Developer menu. No Student API endpoint is called yet: the API and
 its contract do not exist (Scheduler_Backend #158, student_app #10).
 
+## The API contract
+
+The app is built against the published Student API contract in
+[`packages/openapi`](../packages/openapi/README.md), never against guesses. That file is a
+copy of the backend's contract (the Student API is built in the backend repository, not here).
+**Nothing is published yet**: `info.version` is `0.0.0` and there are no paths, so no endpoint
+is called by the app today.
+
+When the first contract is published, `packages/openapi/README.md` says how to start a mock
+server from its examples and how to pick a named example; point the dev configuration's API
+base URL at the mock. The Dart client is generated from that file with no hand edits.
+
 ## Flutter version
 
 **Flutter 3.35.7** (Dart 3.9.2), exactly. CI installs the same tag
