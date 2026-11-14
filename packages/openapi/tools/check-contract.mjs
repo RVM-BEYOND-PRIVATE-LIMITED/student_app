@@ -41,7 +41,10 @@ export function check(current, previous) {
   if (version && version !== '0.0.0' && !sourceCommitOf(current)) {
     problems.push('info.x-source-commit must name the backend commit this contract was copied from.');
   }
-  if (previous !== null && previous !== current) {
+  // Withdrawing everything (0.0.0 with no path) is allowed without a higher number: it is how
+  // the scaffold's generated file was replaced by "nothing published yet".
+  const withdrawn = version === '0.0.0' && pathsOf(current).length === 0;
+  if (previous !== null && previous !== current && !withdrawn) {
     const before = versionOf(previous);
     if (version && before && !newer(version, before)) {
       problems.push(`The contract changed but info.version did not go up (${before} -> ${version}). Raise the version in the same pull request.`);

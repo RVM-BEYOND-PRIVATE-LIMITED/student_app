@@ -41,3 +41,9 @@ test('a change without a version bump fails, and with one passes', () => {
 test('a published contract must name its source commit', () => {
   assert.match(check(doc('1.0.0', ['/v1/config']), null)[0], /x-source-commit/);
 });
+
+test('withdrawing everything to 0.0.0 with no path needs no higher version', () => {
+  assert.deepEqual(check(doc('0.0.0', []), doc('1.0.0', ['/v1/config'], 'abc1234')), []);
+  // But 0.0.0 with a path is still a change without a bump.
+  assert.match(check(doc('0.0.0', ['/v1/config']), doc('1.0.0', ['/v1/config'], 'abc1234'))[0], /did not go up/);
+});
