@@ -1,7 +1,7 @@
 {
   "name": "@rvm-student/openapi",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "scripts": {
     "lint": "redocly lint --config redocly.yaml openapi.yaml",
     "test": "node --test tools/check-contract.test.mjs"

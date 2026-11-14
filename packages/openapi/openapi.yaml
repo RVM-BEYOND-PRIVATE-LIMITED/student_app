@@ -1,19 +1,1511 @@
 openapi: 3.1.0
 info:
   title: RVM Student API
-  # 0.0.0 means: nothing is published yet. The first real contract is published from the
-  # backend repository (Scheduler_Backend #158) by a pull request that raises this number and
-  # fills x-source-commit. Until then there is nothing to build against, on purpose.
-  version: 0.0.0
-  description: >-
-    The Student API contract for the RVM Student app and its web version. This file is a copy
-    of the backend's contract; the backend repository is the source of truth. No path is
-    published yet.
+  version: 0.1.0
+  # Copied unchanged from Scheduler_Backend docs/api/student-api.openapi.yaml at this commit.
+  x-source-commit: 8aa49d1c3d3f111e6141af9584c2afa0a9facacc
+  summary: What the RVM student app and its web version call.
+  description: |
+    The `/v1` surface of Stage 1A: sign-in, linking a student to their admission, consents and
+    the age tick, Jobs access, the Campus hand-off and the prompts that come back from Campus.
+
+    Rules every reply follows:
+
+    * Errors have one shape, `Error`: `code` is what the app branches on; `message` is English
+      for a log or a fallback line and is never shown as the only text.
+    * Every POST, PUT, PATCH and DELETE needs an `Idempotency-Key` header. The same key with the
+      same body replays the first reply (header `Idempotent-Replayed: true`); the same key with
+      another body is a 409. A reply that carries tokens is never stored: a replay mints a fresh
+      pair for the same session.
+    * The app sends `X-App-Version`. Below the minimum the server answers 426
+      `UPGRADE_REQUIRED` on every route except `GET /v1/config`. The web version sends no
+      version and is never gated.
+    * Money is integer paise (`*_paise`). Phone numbers are never returned in full except the
+      student's own, masked, in `phone_masked`.
+    * Every reply carries `X-Request-Id`; quote it when reporting a problem.
+
+    Mock server, for building the app before the API is live:
+
+        npx @stoplight/prism-cli@5 mock docs/api/student-api.openapi.yaml
+
+    Prism answers each route with its first named example; send `Prefer: example=<name>` to pick
+    another one (for example `Prefer: example=needs_centre`).
+
+    Status of each route on the server is in `x-status`: `live` routes are served today, `planned`
+    routes are contract only and answer 404 until their issue ships.
+  contact:
+    name: RVM Beyond Private Limited
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
-  x-source-commit: null
+
 servers:
-  - url: https://student-api.example.invalid
-    description: Placeholder. The real host is set when the first contract is published.
-paths: {}
+  - url: http://127.0.0.1:4010
+    description: Local mock (Prism)
+
+tags:
+  - name: config
+    description: Settings the app reads at start-up.
+  - name: auth
+    description: Sign-in with a code sent to the phone, sessions and sign-out.
+  - name: me
+    description: The signed-in student's own account.
+  - name: linking
+    description: Linking the account to the student's admission.
+  - name: consents
+    description: The consent lines and the age tick.
+  - name: jobs
+    description: Whether the Jobs tab opens.
+  - name: campus
+    description: The Campus hand-off and what Campus sends back.
+
+security:
+  - studentBearer: []
+
+paths:
+  /v1/config:
+    get:
+      tags: [config]
+      operationId: getConfig
+      summary: App settings read at start-up
+      description: |
+        No sign-in. Read on every app start and every 30 minutes in the foreground. The minimum
+        version, the store link, maintenance and the Jobs tab header all change on the server
+        with no app release.
+      x-status: live
+      security: []
+      responses:
+        '200':
+          description: The settings.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Config' }
+              examples:
+                normal: { $ref: '#/components/examples/ConfigNormal' }
+                maintenance: { $ref: '#/components/examples/ConfigMaintenance' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /v1/auth/otp/request:
+    post:
+      tags: [auth]
+      operationId: requestOtp
+      summary: Send a sign-in code to a phone
+      description: |
+        The code goes on WhatsApp; if that cannot be sent it goes by SMS at once. The reply is the
+        same whether or not the phone already has an account. A phone that is not in the pilot
+        while the app is in pilot gets 503 `MODULE_OFF` before any code is sent.
+      x-status: planned
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OtpRequest' }
+            examples:
+              phone: { value: { phone: '9000000000' } }
+      responses:
+        '201':
+          description: A code was sent.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OtpChallenge' }
+              examples:
+                whatsapp: { $ref: '#/components/examples/ChallengeWhatsapp' }
+                sms_fallback: { $ref: '#/components/examples/ChallengeSms' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/IdempotencyConflict' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /v1/auth/otp/resend:
+    post:
+      tags: [auth]
+      operationId: resendOtp
+      summary: Send the same code again by SMS
+      description: Once per challenge, after `resend_available_at`.
+      x-status: planned
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OtpResend' }
+            examples:
+              resend: { value: { challenge_id: 7d1f8c2e-1b3a-4c5d-9e6f-0a1b2c3d4e5f } }
+      responses:
+        '200':
+          description: The code was sent again.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OtpChallenge' }
+              examples:
+                resent: { $ref: '#/components/examples/ChallengeSms' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /v1/auth/otp/verify:
+    post:
+      tags: [auth]
+      operationId: verifyOtp
+      summary: Sign in with the code
+      description: |
+        Finds or creates the account, binds this device and opens a session. The app keeps the
+        refresh token in secure storage. The web version gets the refresh token as an httpOnly
+        cookie instead, and `refresh_token` is absent from the reply.
+
+        A linked student signing in on a second phone while the first is still active gets 409
+        `DEVICE_CHANGE_NEEDS_CENTRE`: the centre approves the new phone.
+      x-status: planned
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OtpVerify' }
+            examples:
+              app:
+                value:
+                  challenge_id: 7d1f8c2e-1b3a-4c5d-9e6f-0a1b2c3d4e5f
+                  code: '482913'
+                  device: { install_id: 3f2b8a90-55c1-4d8e-a2b7-6c9d0e1f2a3b, platform: android, app_version: 1.0.0 }
+      responses:
+        '200':
+          description: Signed in.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SignedIn' }
+              examples:
+                new_account: { $ref: '#/components/examples/SignedInNew' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: The code is wrong, expired or used up.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                wrong_code: { $ref: '#/components/examples/ErrorWrongCode' }
+                expired: { $ref: '#/components/examples/ErrorCodeExpired' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /v1/auth/refresh:
+    post:
+      tags: [auth]
+      operationId: refreshSession
+      summary: Swap a refresh token for a new pair
+      description: |
+        Every refresh token is used once. Sending an old one again ends every session of that
+        sign-in. If the reply to a refresh is lost on a bad network, sending the same token again
+        from the same install shortly afterwards still works once.
+
+        The web version sends no body: the cookie carries the token, and the request must come
+        from an allowed origin.
+      x-status: planned
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+            examples:
+              app: { value: { refresh_token: rt_8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a, install_id: 3f2b8a90-55c1-4d8e-a2b7-6c9d0e1f2a3b } }
+      responses:
+        '200':
+          description: A new pair.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+              examples:
+                app: { $ref: '#/components/examples/TokenPairApp' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /v1/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: End this session
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '204':
+          description: The session is ended.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+  /v1/me:
+    get:
+      tags: [me]
+      operationId: getMe
+      summary: The signed-in student
+      description: |
+        What the app needs on every open: where the student stands, whether onboarding is done,
+        and how many prompts are waiting. `stage` is `visitor` until the account is linked to an
+        admission.
+      x-status: live
+      parameters:
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: The account.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+              examples:
+                visitor: { $ref: '#/components/examples/MeVisitor' }
+                registered: { $ref: '#/components/examples/MeRegistered' }
+                alumnus_with_dues: { $ref: '#/components/examples/MeAlumnusWithDues' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /v1/me/language:
+    put:
+      tags: [me]
+      operationId: setLanguage
+      summary: Choose English or Hindi
+      x-status: live
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LanguageChoice' }
+            examples:
+              hindi: { value: { language: hi } }
+      responses:
+        '200':
+          description: The account, with the new language.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+              examples:
+                visitor: { $ref: '#/components/examples/MeVisitorHindi' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/IdempotencyConflict' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /v1/me/sessions:
+    get:
+      tags: [me]
+      operationId: listSessions
+      summary: Where this account is signed in
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: Live sessions, this one first.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessions]
+                properties:
+                  sessions:
+                    type: array
+                    items: { $ref: '#/components/schemas/Session' }
+              examples:
+                two: { $ref: '#/components/examples/SessionsTwo' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+  /v1/branches:
+    get:
+      tags: [linking]
+      operationId: listBranches
+      summary: Centres and the number to call
+      description: For the "Ask your centre" screen.
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: The centres.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [branches]
+                properties:
+                  branches:
+                    type: array
+                    items: { $ref: '#/components/schemas/Branch' }
+              examples:
+                list: { $ref: '#/components/examples/BranchesList' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+  /v1/me/link/auto:
+    post:
+      tags: [linking]
+      operationId: linkAutomatically
+      summary: '"I have already paid": find my admission by my phone'
+      description: |
+        Uses only the phone the student signed in with. One clear match links the account. No
+        match, or more than one, answers `needs_centre` and says nothing about any admission.
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: The result.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LinkResult' }
+              examples:
+                linked: { $ref: '#/components/examples/LinkLinked' }
+                needs_centre: { $ref: '#/components/examples/LinkNeedsCentre' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/IdempotencyConflict' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+  /v1/me/link/request:
+    post:
+      tags: [linking]
+      operationId: requestLink
+      summary: Ask the centre to link my admission
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LinkRequest' }
+            examples:
+              typed: { value: { branch_id: 1, name: Aman Verma, admission_number: RVM-2026-00412 } }
+      responses:
+        '201':
+          description: The request is with the centre.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LinkResult' }
+              examples:
+                requested: { $ref: '#/components/examples/LinkRequested' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+  /v1/me/admission:
+    get:
+      tags: [linking]
+      operationId: getAdmission
+      summary: My admission and fee plan
+      description: |
+        Read live on every call. An admission carried over from the old portal shows
+        `paid_figures: legacy` and leaves out `total_paid_paise`, because its paid figures are
+        not reliable.
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: The admission.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Admission' }
+              examples:
+                current: { $ref: '#/components/examples/AdmissionCurrent' }
+                legacy: { $ref: '#/components/examples/AdmissionLegacy' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+  /v1/consent-texts:
+    get:
+      tags: [consents]
+      operationId: listConsentTexts
+      summary: The consent lines, current version, both languages
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: The texts.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [texts]
+                properties:
+                  texts:
+                    type: array
+                    items: { $ref: '#/components/schemas/ConsentText' }
+              examples:
+                version_1: { $ref: '#/components/examples/ConsentTextsV1' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+  /v1/me/consents:
+    get:
+      tags: [consents]
+      operationId: getConsents
+      summary: What I have agreed to, with dates
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: One line per purpose.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Consents' }
+              examples:
+                given: { $ref: '#/components/examples/ConsentsGiven' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+    put:
+      tags: [consents]
+      operationId: setConsents
+      summary: Give or withdraw each consent line
+      description: Setting a line to false withdraws it; it can be given again later.
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentChoice' }
+            examples:
+              both: { value: { share_profile: true, marketing_story: false, text_versions: { share_profile: 1, marketing_story: 1 } } }
+      responses:
+        '200':
+          description: The consents now.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Consents' }
+              examples:
+                given: { $ref: '#/components/examples/ConsentsGiven' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+  /v1/me/age-confirmation:
+    post:
+      tags: [consents]
+      operationId: confirmAge
+      summary: Tick "I am 18 or above"
+      description: Recorded once and cannot be undone. No date of birth is asked.
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: The account, with the tick recorded.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+              examples:
+                visitor: { $ref: '#/components/examples/MeVisitor' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '409': { $ref: '#/components/responses/IdempotencyConflict' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+  /v1/me/jobs-access:
+    get:
+      tags: [jobs]
+      operationId: getJobsAccess
+      summary: Whether the Jobs tab opens, and why not
+      description: |
+        `reasons` lists every reason that holds, in a fixed order; `reason` is the first of them.
+        No amount is ever part of this reply.
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: The answer.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobsAccess' }
+              examples:
+                allowed: { $ref: '#/components/examples/JobsAllowed' }
+                not_linked: { $ref: '#/components/examples/JobsNotLinked' }
+                fee_pending: { $ref: '#/components/examples/JobsFeePending' }
+                consent_missing: { $ref: '#/components/examples/JobsConsentMissing' }
+                age_not_confirmed: { $ref: '#/components/examples/JobsAgeNotConfirmed' }
+                account_blocked: { $ref: '#/components/examples/JobsAccountBlocked' }
+                not_open_yet: { $ref: '#/components/examples/JobsNotOpenYet' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+  /v1/me/campus-handoff:
+    post:
+      tags: [campus]
+      operationId: createCampusHandoff
+      summary: A one-minute link that opens Campus signed in
+      description: |
+        Open `url` in the Jobs tab web view straight away; it works once and expires at
+        `expires_at`. Never store it. Refused with 403 `JOBS_CLOSED` (with `details.reasons`)
+        when Jobs access is not allowed.
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: The link.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+            Cache-Control:
+              description: Always `no-store`.
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CampusHandoff' }
+              examples:
+                link: { $ref: '#/components/examples/CampusHandoffLink' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /v1/me/placement-prompts:
+    get:
+      tags: [campus]
+      operationId: listPlacementPrompts
+      summary: '"You were selected: upload your proof" prompts'
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: Open prompts, newest first.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [prompts]
+                properties:
+                  prompts:
+                    type: array
+                    items: { $ref: '#/components/schemas/PlacementPrompt' }
+              examples:
+                one: { $ref: '#/components/examples/PlacementPromptsOne' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+  /v1/me/placement-prompts/{id}/dismiss:
+    post:
+      tags: [campus]
+      operationId: dismissPlacementPrompt
+      summary: Hide a placement prompt
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: The prompt, dismissed.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlacementPrompt' }
+              examples:
+                dismissed: { $ref: '#/components/examples/PlacementPromptDismissed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+  /v1/me/consent-requests:
+    get:
+      tags: [campus]
+      operationId: listConsentRequests
+      summary: Companies asking to see my profile
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: Requests waiting for an answer, oldest first.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [requests]
+                properties:
+                  requests:
+                    type: array
+                    items: { $ref: '#/components/schemas/ConsentRequest' }
+              examples:
+                one: { $ref: '#/components/examples/ConsentRequestsOne' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+  /v1/me/consent-requests/{id}/answer:
+    post:
+      tags: [campus]
+      operationId: answerConsentRequest
+      summary: Say yes or no to one company
+      x-status: planned
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentAnswer' }
+            examples:
+              yes: { value: { answer: 'yes' } }
+      responses:
+        '200':
+          description: The request, answered.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentRequest' }
+              examples:
+                answered: { $ref: '#/components/examples/ConsentRequestAnswered' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+
+components:
+  securitySchemes:
+    studentBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: The access token from sign-in or refresh. It lives 15 minutes.
+
+  headers:
+    X-Request-Id:
+      description: The id of this request. Quote it when reporting a problem.
+      schema: { type: string }
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: A new random value for each action (a UUID is fine), reused only to retry that same action.
+      schema: { type: string, pattern: '^[A-Za-z0-9_.:-]{8,255}$' }
+    AppVersion:
+      name: X-App-Version
+      in: header
+      required: false
+      description: The app's version, for example 1.2.0. The web version sends none.
+      schema: { type: string, pattern: '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$' }
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    BadRequest:
+      description: The request is not valid. `details.issues` names each problem.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            validation: { $ref: '#/components/examples/ErrorValidation' }
+            key_missing: { $ref: '#/components/examples/ErrorKeyMissing' }
+    Unauthenticated:
+      description: No valid student token.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            unauthenticated: { $ref: '#/components/examples/ErrorUnauthenticated' }
+    Forbidden:
+      description: Signed in, but this is not open to the student yet.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            onboarding: { $ref: '#/components/examples/ErrorOnboarding' }
+            blocked: { $ref: '#/components/examples/ErrorAccountBlocked' }
+            jobs_closed: { $ref: '#/components/examples/ErrorJobsClosed' }
+    NotFound:
+      description: Nothing here.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            not_found: { $ref: '#/components/examples/ErrorNotFound' }
+    Conflict:
+      description: The action clashes with what is already there, or the key was reused.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            device_change: { $ref: '#/components/examples/ErrorDeviceChange' }
+            key_reused: { $ref: '#/components/examples/ErrorKeyReused' }
+    IdempotencyConflict:
+      description: The Idempotency-Key was used with another body, or its first use is still running.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            key_reused: { $ref: '#/components/examples/ErrorKeyReused' }
+            in_progress: { $ref: '#/components/examples/ErrorKeyInProgress' }
+    UpgradeRequired:
+      description: This app version is too old. Show the update screen with `details.store_url`.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            upgrade: { $ref: '#/components/examples/ErrorUpgrade' }
+    RateLimited:
+      description: Too many requests. Wait `details.retry_after` seconds.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+        Retry-After:
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            rate_limited: { $ref: '#/components/examples/ErrorRateLimited' }
+    Unavailable:
+      description: The app is not open to this student yet, or the service is in maintenance.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            module_off: { $ref: '#/components/examples/ErrorModuleOff' }
+            maintenance: { $ref: '#/components/examples/ErrorMaintenance' }
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message, details, request_id]
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          description: |
+            What the app branches on. One of: VALIDATION_FAILED, IDEMPOTENCY_KEY_REQUIRED,
+            IDEMPOTENCY_KEY_INVALID, IDEMPOTENCY_KEY_REUSED, IDEMPOTENCY_IN_PROGRESS, UNAUTHENTICATED,
+            CODE_WRONG, CODE_EXPIRED, ONBOARDING_INCOMPLETE, ACCOUNT_BLOCKED, JOBS_CLOSED,
+            NOT_FOUND, DEVICE_CHANGE_NEEDS_CENTRE, LINK_REQUEST_OPEN, ALREADY_ANSWERED,
+            CONSENT_TEXT_OUTDATED, UPGRADE_REQUIRED, RATE_LIMITED, MODULE_OFF, MAINTENANCE,
+            NOT_READY, INTERNAL.
+          pattern: '^[A-Z][A-Z0-9_]+$'
+        message: { type: string }
+        details:
+          description: Extra facts for some codes, otherwise null.
+          oneOf:
+            - type: 'null'
+            - type: object
+        request_id: { type: string }
+
+    Config:
+      type: object
+      required: [min_supported_version, latest_version, store_url, maintenance, jobs_header]
+      additionalProperties: false
+      properties:
+        min_supported_version: { $ref: '#/components/schemas/Version' }
+        latest_version: { $ref: '#/components/schemas/Version' }
+        store_url:
+          description: Where the update button goes. Null until the app is in a store.
+          oneOf:
+            - type: 'null'
+            - type: string
+              format: uri
+        maintenance:
+          type: object
+          required: [active, message]
+          additionalProperties: false
+          properties:
+            active: { type: boolean }
+            message:
+              oneOf:
+                - type: 'null'
+                - type: string
+        jobs_header: { $ref: '#/components/schemas/JobsHeader' }
+
+    JobsHeader:
+      type: object
+      description: The strip above the Jobs tab web view, set on the server.
+      required: [title, subtitle, logos]
+      additionalProperties: false
+      properties:
+        title: { type: string }
+        subtitle:
+          oneOf:
+            - type: 'null'
+            - type: string
+        logos:
+          type: array
+          items:
+            type: object
+            required: [key, url]
+            additionalProperties: false
+            properties:
+              key: { type: string, enum: [rvm, campus] }
+              url: { type: string, format: uri }
+
+    Version:
+      type: string
+      pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+
+    OtpRequest:
+      type: object
+      required: [phone]
+      additionalProperties: false
+      properties:
+        phone:
+          type: string
+          minLength: 10
+          maxLength: 20
+          description: An Indian mobile number. Spaces, dashes and a leading +91 or 0 are removed; what is left must be 10 digits starting with 6 to 9.
+
+    OtpResend:
+      type: object
+      required: [challenge_id]
+      additionalProperties: false
+      properties:
+        challenge_id: { type: string, format: uuid }
+
+    OtpChallenge:
+      type: object
+      required: [challenge_id, channel, expires_at, resend_available_at]
+      additionalProperties: false
+      properties:
+        challenge_id: { type: string, format: uuid }
+        channel: { type: string, enum: [whatsapp, sms] }
+        expires_at: { type: string, format: date-time }
+        resend_available_at:
+          description: When the SMS resend opens. Null once it has been used.
+          oneOf:
+            - type: 'null'
+            - type: string
+              format: date-time
+
+    Device:
+      type: object
+      required: [install_id, platform]
+      additionalProperties: false
+      properties:
+        install_id: { type: string, format: uuid }
+        platform: { type: string, enum: [android, ios, web] }
+        app_version: { $ref: '#/components/schemas/Version' }
+
+    OtpVerify:
+      type: object
+      required: [challenge_id, code, device]
+      additionalProperties: false
+      properties:
+        challenge_id: { type: string, format: uuid }
+        code: { type: string, pattern: '^[0-9]{6}$' }
+        device: { $ref: '#/components/schemas/Device' }
+
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        refresh_token: { type: string, minLength: 20 }
+        install_id: { type: string, format: uuid }
+
+    TokenPair:
+      type: object
+      required: [token_type, access_token, access_expires_at, session_id]
+      additionalProperties: false
+      properties:
+        token_type: { type: string, const: Bearer }
+        access_token: { type: string }
+        access_expires_at: { type: string, format: date-time }
+        refresh_token:
+          type: string
+          description: App only. The web version receives it as a cookie instead.
+        refresh_expires_at: { type: string, format: date-time }
+        session_id: { type: string, format: uuid }
+
+    SignedIn:
+      type: object
+      required: [tokens, account, created]
+      additionalProperties: false
+      properties:
+        tokens: { $ref: '#/components/schemas/TokenPair' }
+        account: { $ref: '#/components/schemas/Me' }
+        created: { type: boolean, description: True when this sign-in made the account. }
+
+    Me:
+      type: object
+      required: [id, phone_masked, language, stage, fee_fully_paid, is_alumni, link_state, onboarding, counts]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The student's account id. The same id is the student's reference on Campus.
+        phone_masked: { type: string, description: 'The bound phone, for example ••••••0000.' }
+        language: { type: string, enum: [en, hi] }
+        stage: { $ref: '#/components/schemas/Stage' }
+        fee_fully_paid: { type: boolean }
+        is_alumni: { type: boolean }
+        link_state: { type: string, enum: [unlinked, requested, linked] }
+        onboarding:
+          type: object
+          required: [age_confirmed, required_consent_given]
+          additionalProperties: false
+          properties:
+            age_confirmed: { type: boolean }
+            required_consent_given: { type: boolean }
+        counts:
+          type: object
+          required: [placement_prompts, consent_requests]
+          additionalProperties: false
+          properties:
+            placement_prompts: { type: integer, minimum: 0 }
+            consent_requests: { type: integer, minimum: 0 }
+
+    Stage:
+      type: string
+      enum: [visitor, registered, fully_paid, alumni]
+      description: |
+        visitor: not linked to an admission. registered: linked, fees still due. fully_paid: the
+        whole fee is paid. alumni: the course has ended; an alumnus with dues still has
+        `fee_fully_paid: false`.
+
+    LanguageChoice:
+      type: object
+      required: [language]
+      additionalProperties: false
+      properties:
+        language: { type: string, enum: [en, hi] }
+
+    Session:
+      type: object
+      required: [id, client_kind, platform, created_at, last_used_at, current]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        client_kind: { type: string, enum: [app, web] }
+        platform: { type: string, enum: [android, ios, web] }
+        created_at: { type: string, format: date-time }
+        last_used_at: { type: string, format: date-time }
+        current: { type: boolean }
+
+    Branch:
+      type: object
+      required: [id, name, call_number]
+      additionalProperties: false
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        call_number:
+          description: The centre's public number, or null while it is not set.
+          oneOf:
+            - type: 'null'
+            - type: string
+
+    LinkRequest:
+      type: object
+      required: [branch_id, name]
+      additionalProperties: false
+      properties:
+        branch_id: { type: integer }
+        name: { type: string, minLength: 2, maxLength: 120 }
+        admission_number: { type: string, maxLength: 40 }
+
+    LinkResult:
+      type: object
+      required: [state, account]
+      additionalProperties: false
+      properties:
+        state: { type: string, enum: [linked, needs_centre, requested] }
+        account: { $ref: '#/components/schemas/Me' }
+
+    Admission:
+      type: object
+      required: [admission_number, name, courses, branch, paid_figures, total_fees_paise, remaining_due_paise, plan]
+      additionalProperties: false
+      properties:
+        admission_number: { type: string }
+        name: { type: string }
+        courses: { type: array, items: { type: string } }
+        branch:
+          type: object
+          required: [id, name]
+          additionalProperties: false
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        paid_figures: { type: string, enum: [current, legacy] }
+        total_fees_paise: { type: integer, minimum: 0 }
+        total_paid_paise: { type: integer, minimum: 0, description: Absent when paid_figures is legacy. }
+        remaining_due_paise: { type: integer, minimum: 0 }
+        plan:
+          type: array
+          items:
+            type: object
+            required: [due_date, amount_paise, balance_due_paise, status]
+            additionalProperties: false
+            properties:
+              due_date: { type: string, format: date }
+              amount_paise: { type: integer, minimum: 0 }
+              balance_due_paise: { type: integer, minimum: 0 }
+              status: { type: string, enum: [paid, pending, overdue] }
+
+    ConsentPurpose:
+      type: string
+      enum: [share_profile, marketing_story]
+      description: share_profile is required for Jobs; marketing_story is optional.
+
+    ConsentText:
+      type: object
+      required: [purpose, version, language, text, required]
+      additionalProperties: false
+      properties:
+        purpose: { $ref: '#/components/schemas/ConsentPurpose' }
+        version: { type: integer, minimum: 1 }
+        language: { type: string, enum: [en, hi] }
+        text: { type: string }
+        required: { type: boolean }
+
+    Consents:
+      type: object
+      required: [consents]
+      additionalProperties: false
+      properties:
+        consents:
+          type: array
+          items:
+            type: object
+            required: [purpose, granted, text_version, granted_at, withdrawn_at]
+            additionalProperties: false
+            properties:
+              purpose: { $ref: '#/components/schemas/ConsentPurpose' }
+              granted: { type: boolean }
+              text_version:
+                oneOf:
+                  - type: 'null'
+                  - type: integer
+              granted_at:
+                oneOf:
+                  - type: 'null'
+                  - type: string
+                    format: date-time
+              withdrawn_at:
+                oneOf:
+                  - type: 'null'
+                  - type: string
+                    format: date-time
+
+    ConsentChoice:
+      type: object
+      required: [share_profile, marketing_story, text_versions]
+      additionalProperties: false
+      properties:
+        share_profile: { type: boolean }
+        marketing_story: { type: boolean }
+        text_versions:
+          type: object
+          required: [share_profile, marketing_story]
+          additionalProperties: false
+          properties:
+            share_profile: { type: integer, minimum: 1 }
+            marketing_story: { type: integer, minimum: 1 }
+
+    JobsReason:
+      type: string
+      enum: [not_linked, fee_pending, consent_missing, age_not_confirmed, account_blocked, not_open_yet]
+
+    JobsAccess:
+      type: object
+      required: [allowed, reason, reasons, stage, checked_at]
+      additionalProperties: false
+      properties:
+        allowed: { type: boolean }
+        reason:
+          description: The first of `reasons`, or null when allowed.
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/JobsReason'
+        reasons:
+          type: array
+          items: { $ref: '#/components/schemas/JobsReason' }
+        stage: { $ref: '#/components/schemas/Stage' }
+        checked_at: { type: string, format: date-time }
+
+    CampusHandoff:
+      type: object
+      required: [url, expires_at]
+      additionalProperties: false
+      properties:
+        url: { type: string, format: uri }
+        expires_at: { type: string, format: date-time }
+
+    PlacementPrompt:
+      type: object
+      required: [id, company_name, job_title, status, received_at]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        company_name: { type: string }
+        job_title: { type: string }
+        status: { type: string, enum: [open, dismissed, done] }
+        received_at: { type: string, format: date-time }
+
+    ConsentRequest:
+      type: object
+      required: [id, company_name, job_title, question, text_version, status, expires_at]
+      additionalProperties: false
+      properties:
+        id: { type: string, format: uuid }
+        company_name: { type: string }
+        job_title: { type: string }
+        question: { type: string }
+        text_version: { type: integer, minimum: 1 }
+        status: { type: string, enum: [pending, 'yes', 'no', expired] }
+        expires_at: { type: string, format: date-time }
+
+    ConsentAnswer:
+      type: object
+      required: [answer]
+      additionalProperties: false
+      properties:
+        answer: { type: string, enum: ['yes', 'no'] }
+
+  examples:
+    ConfigNormal:
+      value:
+        min_supported_version: 1.0.0
+        latest_version: 1.2.0
+        store_url: https://play.google.com/store/apps/details?id=org.example.student
+        maintenance: { active: false, message: null }
+        jobs_header:
+          title: Jobs on BadaBhai Campus
+          subtitle: Jobs for RVM students
+          logos:
+            - { key: rvm, url: 'https://cdn.example.org/logos/rvm.png' }
+            - { key: campus, url: 'https://cdn.example.org/logos/campus.png' }
+    ConfigMaintenance:
+      value:
+        min_supported_version: 1.0.0
+        latest_version: 1.2.0
+        store_url: null
+        maintenance: { active: true, message: The app is being updated. Please try again in a few minutes. }
+        jobs_header: { title: Jobs on BadaBhai Campus, subtitle: null, logos: [] }
+    ChallengeWhatsapp:
+      value: { challenge_id: 7d1f8c2e-1b3a-4c5d-9e6f-0a1b2c3d4e5f, channel: whatsapp, expires_at: '2026-12-01T10:05:00Z', resend_available_at: '2026-12-01T10:00:30Z' }
+    ChallengeSms:
+      value: { challenge_id: 7d1f8c2e-1b3a-4c5d-9e6f-0a1b2c3d4e5f, channel: sms, expires_at: '2026-12-01T10:05:00Z', resend_available_at: null }
+    TokenPairApp:
+      value:
+        token_type: Bearer
+        access_token: eyJhbGciOiJFZERTQSJ9.e30.example-signature
+        access_expires_at: '2026-12-01T10:15:00Z'
+        refresh_token: rt_8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a
+        refresh_expires_at: '2027-01-30T10:00:00Z'
+        session_id: 0c9b8a7f-6e5d-4c3b-2a19-08f7e6d5c4b3
+    SignedInNew:
+      value:
+        created: true
+        tokens:
+          token_type: Bearer
+          access_token: eyJhbGciOiJFZERTQSJ9.e30.example-signature
+          access_expires_at: '2026-12-01T10:15:00Z'
+          refresh_token: rt_8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a
+          refresh_expires_at: '2027-01-30T10:00:00Z'
+          session_id: 0c9b8a7f-6e5d-4c3b-2a19-08f7e6d5c4b3
+        account:
+          id: 5b0c3e7a-2d4f-4a1b-9c8d-7e6f5a4b3c2d
+          phone_masked: ••••••0000
+          language: en
+          stage: visitor
+          fee_fully_paid: false
+          is_alumni: false
+          link_state: unlinked
+          onboarding: { age_confirmed: false, required_consent_given: false }
+          counts: { placement_prompts: 0, consent_requests: 0 }
+    MeVisitor:
+      value:
+        id: 5b0c3e7a-2d4f-4a1b-9c8d-7e6f5a4b3c2d
+        phone_masked: ••••••0000
+        language: en
+        stage: visitor
+        fee_fully_paid: false
+        is_alumni: false
+        link_state: unlinked
+        onboarding: { age_confirmed: true, required_consent_given: false }
+        counts: { placement_prompts: 0, consent_requests: 0 }
+    MeVisitorHindi:
+      value:
+        id: 5b0c3e7a-2d4f-4a1b-9c8d-7e6f5a4b3c2d
+        phone_masked: ••••••0000
+        language: hi
+        stage: visitor
+        fee_fully_paid: false
+        is_alumni: false
+        link_state: unlinked
+        onboarding: { age_confirmed: false, required_consent_given: false }
+        counts: { placement_prompts: 0, consent_requests: 0 }
+    MeRegistered:
+      value:
+        id: 5b0c3e7a-2d4f-4a1b-9c8d-7e6f5a4b3c2d
+        phone_masked: ••••••0000
+        language: en
+        stage: registered
+        fee_fully_paid: false
+        is_alumni: false
+        link_state: linked
+        onboarding: { age_confirmed: true, required_consent_given: true }
+        counts: { placement_prompts: 0, consent_requests: 1 }
+    MeAlumnusWithDues:
+      value:
+        id: 5b0c3e7a-2d4f-4a1b-9c8d-7e6f5a4b3c2d
+        phone_masked: ••••••0000
+        language: en
+        stage: alumni
+        fee_fully_paid: false
+        is_alumni: true
+        link_state: linked
+        onboarding: { age_confirmed: true, required_consent_given: true }
+        counts: { placement_prompts: 1, consent_requests: 0 }
+    SessionsTwo:
+      value:
+        sessions:
+          - { id: 0c9b8a7f-6e5d-4c3b-2a19-08f7e6d5c4b3, client_kind: app, platform: android, created_at: '2026-12-01T10:00:00Z', last_used_at: '2026-12-03T08:12:00Z', current: true }
+          - { id: 1d0c9b8a-7f6e-4d5c-8b3a-2f1e0d9c8b7a, client_kind: web, platform: web, created_at: '2026-12-02T18:40:00Z', last_used_at: '2026-12-02T19:05:00Z', current: false }
+    BranchesList:
+      value:
+        branches:
+          - { id: 1, name: Faridabad, call_number: '0000000001' }
+          - { id: 2, name: Pune, call_number: null }
+    LinkLinked:
+      value:
+        state: linked
+        account:
+          id: 5b0c3e7a-2d4f-4a1b-9c8d-7e6f5a4b3c2d
+          phone_masked: ••••••0000
+          language: en
+          stage: registered
+          fee_fully_paid: false
+          is_alumni: false
+          link_state: linked
+          onboarding: { age_confirmed: true, required_consent_given: true }
+          counts: { placement_prompts: 0, consent_requests: 0 }
+    LinkNeedsCentre:
+      value:
+        state: needs_centre
+        account:
+          id: 5b0c3e7a-2d4f-4a1b-9c8d-7e6f5a4b3c2d
+          phone_masked: ••••••0000
+          language: en
+          stage: visitor
+          fee_fully_paid: false
+          is_alumni: false
+          link_state: unlinked
+          onboarding: { age_confirmed: true, required_consent_given: true }
+          counts: { placement_prompts: 0, consent_requests: 0 }
+    LinkRequested:
+      value:
+        state: requested
+        account:
+          id: 5b0c3e7a-2d4f-4a1b-9c8d-7e6f5a4b3c2d
+          phone_masked: ••••••0000
+          language: en
+          stage: visitor
+          fee_fully_paid: false
+          is_alumni: false
+          link_state: requested
+          onboarding: { age_confirmed: true, required_consent_given: true }
+          counts: { placement_prompts: 0, consent_requests: 0 }
+    AdmissionCurrent:
+      value:
+        admission_number: RVM-2026-00412
+        name: Aman Verma
+        courses: [AutoCAD, SolidWorks]
+        branch: { id: 1, name: Faridabad }
+        paid_figures: current
+        total_fees_paise: 100000
+        total_paid_paise: 40000
+        remaining_due_paise: 60000
+        plan:
+          - { due_date: '2026-11-01', amount_paise: 40000, balance_due_paise: 0, status: paid }
+          - { due_date: '2026-12-01', amount_paise: 30000, balance_due_paise: 30000, status: overdue }
+          - { due_date: '2027-01-01', amount_paise: 30000, balance_due_paise: 30000, status: pending }
+    AdmissionLegacy:
+      value:
+        admission_number: RVM-2024-00077
+        name: Neha Singh
+        courses: [CATIA]
+        branch: { id: 2, name: Pune }
+        paid_figures: legacy
+        total_fees_paise: 100000
+        remaining_due_paise: 20000
+        plan:
+          - { due_date: '2026-11-03', amount_paise: 20000, balance_due_paise: 20000, status: overdue }
+    ConsentTextsV1:
+      value:
+        texts:
+          - { purpose: share_profile, version: 1, language: en, required: true, text: Share my profile with companies I apply to. }
+          - { purpose: share_profile, version: 1, language: hi, required: true, text: "जिन कंपनियों में मैं आवेदन करूँ, उनके साथ मेरी प्रोफ़ाइल साझा करें।" }
+          - { purpose: marketing_story, version: 1, language: en, required: false, text: "Use my placement story in RVM's marketing." }
+          - { purpose: marketing_story, version: 1, language: hi, required: false, text: RVM के प्रचार में मेरी प्लेसमेंट कहानी का उपयोग करें। }
+    ConsentsGiven:
+      value:
+        consents:
+          - { purpose: share_profile, granted: true, text_version: 1, granted_at: '2026-12-01T10:02:00Z', withdrawn_at: null }
+          - { purpose: marketing_story, granted: false, text_version: null, granted_at: null, withdrawn_at: null }
+    JobsAllowed:
+      value: { allowed: true, reason: null, reasons: [], stage: fully_paid, checked_at: '2026-12-01T10:03:00Z' }
+    JobsNotLinked:
+      value: { allowed: false, reason: not_linked, reasons: [not_linked], stage: visitor, checked_at: '2026-12-01T10:03:00Z' }
+    JobsFeePending:
+      value: { allowed: false, reason: fee_pending, reasons: [fee_pending], stage: registered, checked_at: '2026-12-01T10:03:00Z' }
+    JobsConsentMissing:
+      value: { allowed: false, reason: consent_missing, reasons: [consent_missing], stage: fully_paid, checked_at: '2026-12-01T10:03:00Z' }
+    JobsAgeNotConfirmed:
+      value: { allowed: false, reason: age_not_confirmed, reasons: [age_not_confirmed], stage: fully_paid, checked_at: '2026-12-01T10:03:00Z' }
+    JobsAccountBlocked:
+      value: { allowed: false, reason: account_blocked, reasons: [account_blocked], stage: registered, checked_at: '2026-12-01T10:03:00Z' }
+    JobsNotOpenYet:
+      value: { allowed: false, reason: not_open_yet, reasons: [not_open_yet], stage: fully_paid, checked_at: '2026-12-01T10:03:00Z' }
+    CampusHandoffLink:
+      value: { url: 'https://campus.example.org/campus/handoff#token=eyJhbGciOiJFZERTQSJ9.e30.example-signature', expires_at: '2026-12-01T10:04:00Z' }
+    PlacementPromptsOne:
+      value:
+        prompts:
+          - { id: 2e1d0c9b-8a7f-4e5d-9c3b-2a1908f7e6d5, company_name: Example Tools Pvt Ltd, job_title: CAD Designer, status: open, received_at: '2026-12-05T09:00:00Z' }
+    PlacementPromptDismissed:
+      value: { id: 2e1d0c9b-8a7f-4e5d-9c3b-2a1908f7e6d5, company_name: Example Tools Pvt Ltd, job_title: CAD Designer, status: dismissed, received_at: '2026-12-05T09:00:00Z' }
+    ConsentRequestsOne:
+      value:
+        requests:
+          - { id: 3f2e1d0c-9b8a-4f7e-8d5c-4b3a2f1e0d9c, company_name: Example Tools Pvt Ltd, job_title: CNC Programmer, question: May this company see your profile?, text_version: 1, status: pending, expires_at: '2026-12-12T09:00:00Z' }
+    ConsentRequestAnswered:
+      value: { id: 3f2e1d0c-9b8a-4f7e-8d5c-4b3a2f1e0d9c, company_name: Example Tools Pvt Ltd, job_title: CNC Programmer, question: May this company see your profile?, text_version: 1, status: 'yes', expires_at: '2026-12-12T09:00:00Z' }
+    ErrorValidation:
+      value: { code: VALIDATION_FAILED, message: The request is not valid., details: { issues: [{ path: language, message: 'Expected "en" or "hi".' }] }, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorKeyMissing:
+      value: { code: IDEMPOTENCY_KEY_REQUIRED, message: This request needs an Idempotency-Key header., details: null, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorKeyReused:
+      value: { code: IDEMPOTENCY_KEY_REUSED, message: This Idempotency-Key was already used with a different request. Use a new key., details: null, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorKeyInProgress:
+      value: { code: IDEMPOTENCY_IN_PROGRESS, message: A request with this Idempotency-Key is still running. Retry shortly., details: null, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorUnauthenticated:
+      value: { code: UNAUTHENTICATED, message: Sign in again., details: null, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorWrongCode:
+      value: { code: CODE_WRONG, message: That code is not right., details: null, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorCodeExpired:
+      value: { code: CODE_EXPIRED, message: That code has expired. Ask for a new one., details: null, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorOnboarding:
+      value: { code: ONBOARDING_INCOMPLETE, message: Finish the first steps first., details: { age_confirmed: false, required_consent_given: true }, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorAccountBlocked:
+      value: { code: ACCOUNT_BLOCKED, message: This account cannot be used. Contact your centre., details: null, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorJobsClosed:
+      value: { code: JOBS_CLOSED, message: Jobs is not open for this account yet., details: { reasons: [fee_pending] }, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorNotFound:
+      value: { code: NOT_FOUND, message: Not found., details: null, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorDeviceChange:
+      value: { code: DEVICE_CHANGE_NEEDS_CENTRE, message: This account is in use on another phone. Your centre can move it to this one., details: null, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorUpgrade:
+      value: { code: UPGRADE_REQUIRED, message: Update the app to continue., details: { min_supported_version: 1.2.0, store_url: 'https://play.google.com/store/apps/details?id=org.example.student' }, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorRateLimited:
+      value: { code: RATE_LIMITED, message: Too many requests. Try again shortly., details: { retry_after: 60 }, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorModuleOff:
+      value: { code: MODULE_OFF, message: The student app is not open yet., details: null, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }
+    ErrorMaintenance:
+      value: { code: MAINTENANCE, message: The app is being updated. Please try again in a few minutes., details: null, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b }

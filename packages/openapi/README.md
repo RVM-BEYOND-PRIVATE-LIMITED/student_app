@@ -4,8 +4,8 @@
 against. It is a **copy**: the Student API is built in the backend repository, and the backend's
 contract is the source of truth. This copy never leads.
 
-**Status: nothing is published yet** (`info.version` is `0.0.0` and there are no paths). The
-first contract arrives with the Student API foundation in the backend repository.
+**Status: 0.1.0 is published** (14 Nov 2026): the Stage 1A `/v1` surface. Each route says
+`x-status: live` (served now) or `planned` (contract only, 404 until its backend issue ships).
 
 ## Publishing a new version
 
@@ -40,7 +40,7 @@ node --test packages/openapi/tools/check-contract.test.mjs
 
 ## A mock server from the examples
 
-Once a contract is published, a mock server answers from its examples:
+A mock server answers from the examples:
 
 ```bash
 npx @stoplight/prism-cli@5 mock packages/openapi/openapi.yaml --port 4010
