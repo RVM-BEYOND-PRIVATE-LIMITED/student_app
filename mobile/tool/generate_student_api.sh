@@ -16,7 +16,7 @@ npx --yes @openapitools/openapi-generator-cli generate \
 rm -rf "$tmp/client/doc" "$tmp/client/test" "$tmp/client/.travis.yml" \
   "$tmp/client/git_push.sh" "$tmp/client/.gitignore" "$tmp/client/.openapi-generator-ignore"
 if [ "${1:-}" = "--check" ]; then
-  diff -ru --exclude='.openapi-generator' "$out" "$tmp/client"
+  diff -ru --exclude='.openapi-generator' --exclude='.dart_tool' --exclude='pubspec.lock' --exclude='.gitignore' "$out" "$tmp/client"
   echo "generated client matches the contract"
 else
   rm -rf "$out"

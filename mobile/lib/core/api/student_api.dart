@@ -343,6 +343,66 @@ class StudentApi {
     ),
   );
 
+  // ── The Stage 3/4 modules (#3-#6, #9) ─────────────────────────────────
+  // These use the same transport as everything else (host guard, headers,
+  // Idempotency-Key, session, renewer and typed Failure). They return the
+  // contract's JSON shapes; screens read the keys they show.
+
+  Future<Map<String, dynamic>> getJson(String path) async =>
+      asMap(await _get<dynamic>(path));
+
+  Future<Map<String, dynamic>> postJson(String path, [Object? body]) async =>
+      asMap(await _post<dynamic>(path, body: body));
+
+  Future<Map<String, dynamic>> putJson(String path, [Object? body]) async =>
+      asMap(await _put<dynamic>(path, body: body));
+
+  Future<Map<String, dynamic>> patchJson(String path, [Object? body]) async =>
+      asMap(await _send<dynamic>(() => _dio.patch<dynamic>(path, data: body)));
+
+  Future<void> deletePath(String path) async {
+    await _send<dynamic>(() => _dio.delete<dynamic>(path));
+  }
+
+  /// A multipart write with one file (the ID document, a placement proof).
+  Future<Map<String, dynamic>> uploadMultipart({
+    required String path,
+    required Map<String, String> fields,
+    required String filePath,
+    String fileField = 'file',
+  }) async {
+    final form = FormData.fromMap({
+      ...fields,
+      fileField: await MultipartFile.fromFile(filePath),
+    });
+    return asMap(
+      await _send<dynamic>(() => _dio.post<dynamic>(path, data: form)),
+    );
+  }
+
+  /// The ID document upload: JPEG, PNG or PDF, at most 5 MB; only the last
+  /// four characters of the number are sent (contract, `/id-document`).
+  Future<Map<String, dynamic>> uploadIdDocument({
+    required String registrationId,
+    required String filePath,
+    required String idType,
+    required String idLast4,
+  }) async {
+    final form = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath),
+      'id_type': idType,
+      'id_last4': idLast4,
+    });
+    return asMap(
+      await _send<dynamic>(
+        () => _dio.post<dynamic>(
+          '/v1/me/registrations/$registrationId/id-document',
+          data: form,
+        ),
+      ),
+    );
+  }
+
   Future<T> _get<T>(String path, {Options? options}) => _send<T>(
     () => _dio.get<T>(path, options: options),
   );

@@ -541,3 +541,267 @@ class ConsentRequest {
   final String status;
   final DateTime? expiresAt;
 }
+
+/// `/v1/courses` and a registration's courses.
+class JoiningCourse {
+  const JoiningCourse({
+    required this.id,
+    required this.name,
+    required this.pricePaise,
+  });
+
+  factory JoiningCourse.fromJson(Map<String, dynamic> json) => JoiningCourse(
+    id: asString(json['id']),
+    name: asString(json['name']),
+    pricePaise: asInt(json['price_paise']),
+  );
+
+  final String id;
+  final String name;
+  final int pricePaise;
+}
+
+/// `/v1/undertaking/current`.
+class Undertaking {
+  const Undertaking({
+    required this.version,
+    required this.videoYoutubeId,
+    required this.videoSeconds,
+    required this.terms,
+  });
+
+  factory Undertaking.fromJson(Map<String, dynamic> json) {
+    final video = asMap(json['video']);
+    return Undertaking(
+      version: asInt(json['version']),
+      videoYoutubeId: asString(video['youtube_id']),
+      videoSeconds: video['seconds'] is num ? asInt(video['seconds']) : null,
+      terms: [
+        for (final term in asList(json['terms']))
+          UndertakingTerm.fromJson(asMap(term)),
+      ],
+    );
+  }
+
+  final int version;
+  final String videoYoutubeId;
+  final int? videoSeconds;
+  final List<UndertakingTerm> terms;
+
+  Uri get videoUri => Uri.parse('https://www.youtube.com/watch?v=$videoYoutubeId');
+}
+
+class UndertakingTerm {
+  const UndertakingTerm({
+    required this.key,
+    required this.text,
+    required this.required,
+  });
+
+  factory UndertakingTerm.fromJson(Map<String, dynamic> json) =>
+      UndertakingTerm(
+        key: asString(json['key']),
+        text: asString(json['text']),
+        required: asBool(json['required']),
+      );
+
+  final String key;
+  final String text;
+  final bool required;
+}
+
+/// `POST`/`PUT /v1/me/registrations` fields. Only what is set is sent.
+class RegistrationFields {
+  const RegistrationFields({
+    this.branchId,
+    this.studentName,
+    this.email,
+    this.dateOfBirth,
+    this.currentAddress,
+    this.permanentAddress,
+    this.fatherName,
+    this.fatherPhone,
+    this.idType,
+    this.courseIds,
+  });
+
+  final int? branchId;
+  final String? studentName;
+  final String? email;
+  final String? dateOfBirth;
+  final String? currentAddress;
+  final String? permanentAddress;
+  final String? fatherName;
+  final String? fatherPhone;
+  final String? idType;
+  final List<String>? courseIds;
+
+  Map<String, dynamic> toJson() => {
+    if (branchId != null) 'branch_id': branchId,
+    if (studentName != null) 'student_name': studentName,
+    if (email != null) 'email': email,
+    if (dateOfBirth != null) 'date_of_birth': dateOfBirth,
+    if (currentAddress != null) 'current_address': currentAddress,
+    if (permanentAddress != null) 'permanent_address': permanentAddress,
+    if (fatherName != null) 'father_name': fatherName,
+    if (fatherPhone != null) 'father_phone': fatherPhone,
+    if (idType != null) 'id_type': idType,
+    if (courseIds != null) 'course_ids': courseIds,
+  };
+}
+
+/// `/v1/me/registrations`.
+class Registration {
+  const Registration({
+    required this.id,
+    required this.status,
+    required this.branchId,
+    required this.studentName,
+    required this.email,
+    required this.dateOfBirth,
+    required this.currentAddress,
+    required this.permanentAddress,
+    required this.fatherName,
+    required this.fatherPhone,
+    required this.idType,
+    required this.courses,
+    required this.totalPaise,
+    required this.videoStartedAt,
+    required this.videoCompletedAt,
+    required this.termsAccepted,
+    required this.idDocumentLast4,
+    required this.submittedAt,
+    required this.missing,
+  });
+
+  factory Registration.fromJson(Map<String, dynamic> json) {
+    final undertaking = asMap(json['undertaking']);
+    final idDocument = json['id_document'] == null
+        ? null
+        : asMap(json['id_document']);
+    return Registration(
+      id: asString(json['id']),
+      status: asString(json['status'], 'draft'),
+      branchId: json['branch_id'] is num ? asInt(json['branch_id']) : null,
+      studentName: asStringOrNull(json['student_name']),
+      email: asStringOrNull(json['email']),
+      dateOfBirth: asStringOrNull(json['date_of_birth']),
+      currentAddress: asStringOrNull(json['current_address']),
+      permanentAddress: asStringOrNull(json['permanent_address']),
+      fatherName: asStringOrNull(json['father_name']),
+      fatherPhone: asStringOrNull(json['father_phone']),
+      idType: asStringOrNull(json['id_type']),
+      courses: [
+        for (final course in asList(json['courses']))
+          JoiningCourse.fromJson(asMap(course)),
+      ],
+      totalPaise: asInt(json['total_paise']),
+      videoStartedAt: asDateOrNull(undertaking['video_started_at']),
+      videoCompletedAt: asDateOrNull(undertaking['video_completed_at']),
+      termsAccepted: [
+        for (final key in asList(undertaking['terms_accepted']))
+          if (key is String) key,
+      ],
+      idDocumentLast4: idDocument == null
+          ? null
+          : asStringOrNull(idDocument['last4']),
+      submittedAt: asDateOrNull(json['submitted_at']),
+      missing: [
+        for (final item in asList(json['missing']))
+          if (item is String) item,
+      ],
+    );
+  }
+
+  final String id;
+  final String status;
+  final int? branchId;
+  final String? studentName;
+  final String? email;
+  final String? dateOfBirth;
+  final String? currentAddress;
+  final String? permanentAddress;
+  final String? fatherName;
+  final String? fatherPhone;
+  final String? idType;
+  final List<JoiningCourse> courses;
+  final int totalPaise;
+  final DateTime? videoStartedAt;
+  final DateTime? videoCompletedAt;
+  final List<String> termsAccepted;
+  final String? idDocumentLast4;
+  final DateTime? submittedAt;
+  final List<String> missing;
+
+  bool get videoDone => videoCompletedAt != null;
+  bool get idUploaded => idDocumentLast4 != null;
+  bool get submitted => status == 'submitted' || status == 'admitted';
+}
+
+/// `/v1/me/batches`.
+class BatchOption {
+  const BatchOption({
+    required this.batchId,
+    required this.courseId,
+    required this.courseName,
+    required this.startDate,
+    required this.endDate,
+    required this.daysOfWeek,
+    required this.startTime,
+    required this.endTime,
+  });
+
+  factory BatchOption.fromJson(Map<String, dynamic> json) {
+    final course = asMap(json['course']);
+    return BatchOption(
+      batchId: asString(json['batch_id']),
+      courseId: asString(course['id']),
+      courseName: asString(course['name']),
+      startDate: asStringOrNull(json['start_date']),
+      endDate: asStringOrNull(json['end_date']),
+      daysOfWeek: [
+        for (final day in asList(json['days_of_week']))
+          if (day is String) day,
+      ],
+      startTime: asStringOrNull(json['start_time']),
+      endTime: asStringOrNull(json['end_time']),
+    );
+  }
+
+  final String batchId;
+  final String courseId;
+  final String courseName;
+  final String? startDate;
+  final String? endDate;
+  final List<String> daysOfWeek;
+  final String? startTime;
+  final String? endTime;
+}
+
+/// `POST /v1/me/payment-orders`.
+class PaymentOrderCreated {
+  const PaymentOrderCreated({
+    required this.id,
+    required this.purpose,
+    required this.amountPaise,
+    required this.mode,
+    required this.status,
+  });
+
+  factory PaymentOrderCreated.fromJson(Map<String, dynamic> json) =>
+      PaymentOrderCreated(
+        id: asString(json['id']),
+        purpose: asString(json['purpose']),
+        amountPaise: asInt(json['amount_paise']),
+        mode: asString(json['mode'], 'dry_run'),
+        status: asString(json['status'], 'created'),
+      );
+
+  final String id;
+  final String purpose;
+  final int amountPaise;
+  final String mode;
+  final String status;
+
+  bool get isDryRun => mode == 'dry_run';
+}
