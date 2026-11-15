@@ -10,8 +10,9 @@ Open `index.html` from a static server (for example
 it. `localStorage.student.api` overrides the API base; the default is
 `https://student-api.rvmcad.org`.
 
-Started: phone/OTP sign-in with the web session cookie, Home, timetable, fees,
-complaints, videos, quizzes and the Appearance choice. Still to do: the Join
-flow, receipts/payment checkout, community, placement proof, learning player,
-push/notifications and the host/CORS/one-session setup in Scheduler_Backend
-#159. Those are the remaining #7 items, not hidden work.
+Started: phone/OTP sign-in with the web session cookie, Home, timetable, fees
+and receipts (PDF download), complaints (raise, thread, reply, reopen), the
+Join start (courses, branch and details), the Jobs hand-off, profile and
+language, videos, quizzes and the Appearance choice. The protected player,
+community, placement proof, push and the host/CORS/one-session setup are the
+remaining #7 items and are not hidden work.
