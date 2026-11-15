@@ -15,7 +15,9 @@ import '../features/language/bloc/language_bloc.dart';
 import '../features/language/language_screen.dart';
 import '../features/linking/already_paid_screen.dart';
 import '../features/onboarding/consent_screen.dart';
-import '../features/join/join_holding_screen.dart';
+import '../features/join/join_screen.dart';
+import '../features/modules/core_modules_screens.dart';
+import '../features/modules/other_modules_screens.dart';
 import '../features/splash/splash_screen.dart';
 import '../features/startup/bloc/startup_bloc.dart';
 import '../features/update_required/update_required_screen.dart';
@@ -32,6 +34,16 @@ abstract final class Routes {
   static const home = '/home';
   static const alreadyPaid = '/already-paid';
   static const joinHolding = '/join';
+  static const fees = '/fees';
+  static const attendance = '/attendance';
+  static const timetable = '/timetable';
+  static const announcements = '/announcements';
+  static const notifications = '/notifications';
+  static const complaints = '/complaints';
+  static const community = '/community';
+  static const visitor = '/visitor';
+  static const placement = '/placement';
+  static const learning = '/learning';
   static const campus = '/jobs/campus';
   static const sessionError = '/session-error';
   static const devMenu = '/dev';
@@ -191,8 +203,18 @@ GoRouter createRouter({
       ),
       GoRoute(
         path: Routes.joinHolding,
-        builder: (context, state) => const JoinHoldingScreen(),
+        builder: (context, state) => const JoinScreen(),
       ),
+      GoRoute(path: Routes.fees, builder: (context, state) => const FeesScreen()),
+      GoRoute(path: Routes.attendance, builder: (context, state) => const AttendanceScreen()),
+      GoRoute(path: Routes.timetable, builder: (context, state) => const TimetableScreen()),
+      GoRoute(path: Routes.announcements, builder: (context, state) => const AnnouncementsScreen()),
+      GoRoute(path: Routes.notifications, builder: (context, state) => const NotificationsScreen()),
+      GoRoute(path: Routes.complaints, builder: (context, state) => const ComplaintsScreen()),
+      GoRoute(path: Routes.community, builder: (context, state) => const CommunityScreen()),
+      GoRoute(path: Routes.visitor, builder: (context, state) => const VisitorScreen()),
+      GoRoute(path: Routes.placement, builder: (context, state) => const PlacementScreen()),
+      GoRoute(path: Routes.learning, builder: (context, state) => const LearningScreen()),
       GoRoute(
         path: Routes.campus,
         builder: (context, state) {
