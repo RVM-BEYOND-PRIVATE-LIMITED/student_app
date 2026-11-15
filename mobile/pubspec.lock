@@ -140,38 +140,30 @@ packages:
   core_auth:
     dependency: "direct main"
     description:
-      path: "flutter_app/packages/core_auth"
-      ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
-      resolved-ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
-      url: "https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git"
-    source: git
+      path: "packages/core_auth"
+      relative: true
+    source: path
     version: "0.0.1"
   core_bloc:
     dependency: "direct main"
     description:
-      path: "flutter_app/packages/core_bloc"
-      ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
-      resolved-ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
-      url: "https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git"
-    source: git
+      path: "packages/core_bloc"
+      relative: true
+    source: path
     version: "0.0.1"
   core_network:
     dependency: "direct main"
     description:
-      path: "flutter_app/packages/core_network"
-      ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
-      resolved-ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
-      url: "https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git"
-    source: git
+      path: "packages/core_network"
+      relative: true
+    source: path
     version: "0.0.1"
   core_ui:
     dependency: "direct main"
     description:
-      path: "flutter_app/packages/core_ui"
-      ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
-      resolved-ref: "07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa"
-      url: "https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git"
-    source: git
+      path: "packages/core_ui"
+      relative: true
+    source: path
     version: "0.0.1"
   coverage:
     dependency: transitive

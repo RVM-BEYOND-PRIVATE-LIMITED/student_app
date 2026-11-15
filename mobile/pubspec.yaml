@@ -57,25 +57,13 @@ dependencies:
   # team_app main commit once develop is promoted. team_app is public, so pub
   # needs no credentials.
   core_network:
-    git:
-      url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
-      path: flutter_app/packages/core_network
-      ref: 07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa
+    path: packages/core_network
   core_auth:
-    git:
-      url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
-      path: flutter_app/packages/core_auth
-      ref: 07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa
+    path: packages/core_auth
   core_bloc:
-    git:
-      url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
-      path: flutter_app/packages/core_bloc
-      ref: 07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa
+    path: packages/core_bloc
   core_ui:
-    git:
-      url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
-      path: flutter_app/packages/core_ui
-      ref: 07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa
+    path: packages/core_ui
 
 dev_dependencies:
   flutter_test:
