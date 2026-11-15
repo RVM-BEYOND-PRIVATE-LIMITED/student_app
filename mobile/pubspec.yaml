@@ -68,6 +68,8 @@ dependencies:
   # #1 item 6). Regenerate with tool/generate_student_api.sh.
   student_api:
     path: packages/student_api
+  share_plus: ^12.0.2
+  vdocipher_flutter: ^2.8.6
 
 dev_dependencies:
   flutter_test:

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:core_network/core_network.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/api/models.dart';
 import '../../../core/api/student_api.dart';
+import '../../../core/push/push_service.dart';
 import '../../../core/session/student_session.dart';
 
 sealed class AuthEvent {
@@ -179,6 +182,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           clearFailure: true,
         ),
       );
+      unawaited(_registerPush());
     } on UnauthorizedFailure {
       await _session.endSession();
       emit(
@@ -271,8 +275,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           clearFailure: true,
         ),
       );
+      unawaited(_registerPush());
     } on Failure catch (failure) {
       emit(state.copyWith(phase: AuthPhase.codeSent, failure: failure));
+    }
+  }
+
+  /// Best effort: a phone without Firebase, or a token the server does not
+  /// take, must never keep a student out of the app.
+  Future<void> _registerPush() async {
+    try {
+      await PushService.instance.init();
+      final token = PushService.instance.token;
+      if (token == null || token.isEmpty) return;
+      await _api.setPushToken(
+        installId: await _session.installId(),
+        token: token,
+      );
+    } catch (_) {
+      // Push is optional; the next sign-in tries again.
     }
   }
 

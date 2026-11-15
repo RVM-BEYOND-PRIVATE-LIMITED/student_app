@@ -39,6 +39,7 @@ class StudentApi {
   static const campusHandoffPath = '/v1/me/campus-handoff';
   static const placementPromptsPath = '/v1/me/placement-prompts';
   static const consentRequestsPath = '/v1/me/consent-requests';
+  static const pushTokenPath = '/v1/me/push-token';
 
   /// The paths this client calls, for the contract drift test.
   static const paths = {
@@ -226,6 +227,16 @@ class StudentApi {
           await _put<dynamic>(preferencesPath, body: {'theme': theme.name}),
         ),
       );
+
+  /// Registers this handset's FCM token for the install that signed in
+  /// (`PUT /v1/me/push-token`).
+  Future<void> setPushToken({
+    required String installId,
+    required String token,
+  }) => _put<void>(
+    pushTokenPath,
+    body: {'install_id': installId, 'token': token},
+  );
 
   Future<List<Branch>> branches() async {
     final json = asMap(await _get<dynamic>(branchesPath));

@@ -3,15 +3,20 @@ import 'package:core_ui/core_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/api/models.dart';
 import '../../core/api/student_api.dart';
 import '../../core/security/secure_screen.dart';
 import '../../injection.dart';
 import '../../l10n/l10n.dart';
 import '../../l10n/tr.dart';
+import '../../theme/student_tokens.dart';
 import '../../widgets/states.dart';
 import 'api_list_screen.dart';
+import 'learning_quizzes.dart';
+import 'video_player_screen.dart';
 
 /* ── Complaints (#5) ────────────────────────────────────────────────────── */
 
@@ -723,11 +728,117 @@ class PlacementScreen extends StatefulWidget {
 class _PlacementScreenState extends State<PlacementScreen> {
   late Future<Map<String, dynamic>> _proofs = getIt<StudentApi>().getJson('/v1/me/placement-proofs');
   late Future<Map<String, dynamic>> _referral = getIt<StudentApi>().getJson('/v1/me/referral');
+  late Future<Map<String, dynamic>> _payout = getIt<StudentApi>().getJson('/v1/me/payout-account');
 
   void _reload() => setState(() {
     _proofs = getIt<StudentApi>().getJson('/v1/me/placement-proofs');
     _referral = getIt<StudentApi>().getJson('/v1/me/referral');
+    _payout = getIt<StudentApi>().getJson('/v1/me/payout-account');
   });
+
+  Future<void> _shareReferral(String code, String? link) async {
+    final text = link == null
+        ? 'Join RVM with my referral code $code.'
+        : 'Join RVM with my referral code $code: $link';
+    await SharePlus.instance.share(ShareParams(text: text, subject: 'RVM referral'));
+  }
+
+  Future<void> _setPayout() async {
+    final holder = TextEditingController();
+    final upi = TextEditingController();
+    final account = TextEditingController();
+    final ifsc = TextEditingController();
+    var kind = 'upi';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(tr(context, 'Where rewards go', 'इनाम कहाँ जाएँ')),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'upi', label: Text('UPI')),
+                    ButtonSegment(value: 'bank', label: Text('Bank')),
+                  ],
+                  selected: {kind},
+                  onSelectionChanged: (selection) =>
+                      setDialogState(() => kind = selection.first),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: holder,
+                  decoration: InputDecoration(
+                    labelText: tr(context, 'Account holder name', 'खाताधारक का नाम'),
+                  ),
+                ),
+                if (kind == 'upi')
+                  TextField(
+                    controller: upi,
+                    decoration: InputDecoration(
+                      labelText: tr(context, 'UPI ID', 'UPI आईडी'),
+                    ),
+                  )
+                else ...[
+                  TextField(
+                    controller: account,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: tr(context, 'Account number', 'खाता संख्या'),
+                    ),
+                  ),
+                  TextField(
+                    controller: ifsc,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: tr(context, 'IFSC', 'IFSC'),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Text(
+                  tr(context, 'Only the holder name and last 4 characters are kept.',
+                      'केवल खाताधारक का नाम और अंतिम 4 अक्षर रखे जाते हैं।'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(tr(context, 'Cancel', 'रद्द')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(tr(context, 'Save', 'सहेजें')),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    final name = holder.text.trim();
+    if (name.length < 2) return;
+    try {
+      await getIt<StudentApi>().putJson('/v1/me/payout-account', {
+        'kind': kind,
+        'holder_name': name,
+        if (kind == 'upi') 'upi_id': upi.text.trim(),
+        if (kind == 'bank') 'account_number': account.text.trim(),
+        if (kind == 'bank') 'ifsc': ifsc.text.trim().toUpperCase(),
+      });
+      _reload();
+    } catch (error) {
+      if (!mounted) return;
+      final failure = error is Failure ? error : const UnknownFailure();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(failureLine(failure, context.l10n))),
+      );
+    }
+  }
 
   Future<void> _sendProof() async {
     final company = TextEditingController();
@@ -760,22 +871,48 @@ class _PlacementScreenState extends State<PlacementScreen> {
         ],
       ),
     );
-    if (ok != true) return;
-    final path = file?.files.single.path;
-    if (path == null) return;
+    if (ok != true || !mounted) return;
+    final picked = file?.files.single;
+    final path = picked?.path;
+    final salaryPaise = (int.tryParse(salary.text.trim()) ?? 0) * 100;
+    if (path == null ||
+        company.text.trim().length < 2 ||
+        role.text.trim().length < 2 ||
+        salaryPaise < 1 ||
+        DateTime.tryParse(date.text.trim()) == null ||
+        (picked?.size ?? 0) > 5 * 1024 * 1024) {
+      _toast(
+        tr(context, 'Fill every field and choose a letter up to 5 MB.',
+            'हर जानकारी भरें और 5 MB तक का पत्र चुनें।'),
+      );
+      return;
+    }
     try {
       await getIt<StudentApi>().uploadMultipart(
         path: '/v1/me/placement-proofs',
         fields: {
           'company_name': company.text.trim(),
           'role': role.text.trim(),
-          'salary_paise': '${(int.tryParse(salary.text.trim()) ?? 0) * 100}',
+          'salary_paise': '$salaryPaise',
           'joining_date': date.text.trim(),
         },
         filePath: path,
       );
       _reload();
-    } catch (_) {}
+    } catch (error) {
+      _toastError(error);
+    }
+  }
+
+  void _toast(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  void _toastError(Object error) {
+    if (!mounted) return;
+    final failure = error is Failure ? error : const UnknownFailure();
+    _toast(failureLine(failure, context.l10n));
   }
 
   @override
@@ -797,6 +934,7 @@ class _PlacementScreenState extends State<PlacementScreen> {
               final code = snapshot.data?['code'];
               final link = snapshot.data?['link'];
               if (code == null) return const SizedBox.shrink();
+              final counts = snapshot.data?['referrals'];
               return ModuleCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -804,11 +942,27 @@ class _PlacementScreenState extends State<PlacementScreen> {
                     Text(tr(context, 'Your referral code', 'आपका रेफ़रल कोड'), style: Theme.of(context).textTheme.titleSmall),
                     const SizedBox(height: 4),
                     Text('$code', style: Theme.of(context).textTheme.headlineSmall),
+                    if (counts is Map)
+                      Text(
+                        '${tr(context, 'Joined', 'जुड़े')}: ${counts['joined'] ?? 0} · '
+                        '${tr(context, 'Rewarded', 'इनाम')}: ${counts['rewarded'] ?? 0}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     if (link != null)
-                      TextButton.icon(
-                        onPressed: () => Clipboard.setData(ClipboardData(text: '$link')),
-                        icon: const Icon(Icons.copy_rounded),
-                        label: Text(tr(context, 'Copy link', 'लिंक कॉपी करें')),
+                      Wrap(
+                        spacing: 4,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () => Clipboard.setData(ClipboardData(text: '$link')),
+                            icon: const Icon(Icons.copy_rounded),
+                            label: Text(tr(context, 'Copy link', 'लिंक कॉपी करें')),
+                          ),
+                          TextButton.icon(
+                            onPressed: () => _shareReferral('$code', '$link'),
+                            icon: const Icon(Icons.share_rounded),
+                            label: Text(tr(context, 'Share', 'साझा करें')),
+                          ),
+                        ],
                       ),
                   ],
                 ),
@@ -816,7 +970,56 @@ class _PlacementScreenState extends State<PlacementScreen> {
             },
           ),
           const SizedBox(height: RvmSpacing.md),
+          Text(tr(context, 'Payout account', 'भुगतान खाता'), style: Theme.of(context).textTheme.titleMedium),
+          FutureBuilder<Map<String, dynamic>>(
+            future: _payout,
+            builder: (context, snapshot) {
+              final account = snapshot.data?['account'];
+              final row = account is Map ? account : null;
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: ModuleCard(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              row == null
+                                  ? tr(context, 'No account yet.', 'अभी कोई खाता नहीं।')
+                                  : '${row['kind'] == 'upi' ? 'UPI' : tr(context, 'Bank', 'बैंक')} · '
+                                      '${row['holder_name'] ?? ''} · ••••${row['last4'] ?? ''}',
+                            ),
+                            if (row != null)
+                              Text(
+                                '${row['status'] ?? ''}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _setPayout,
+                        child: Text(row == null
+                            ? tr(context, 'Add', 'जोड़ें')
+                            : tr(context, 'Change', 'बदलें')),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: RvmSpacing.md),
           Text(tr(context, 'My proofs', 'मेरे प्रमाण'), style: Theme.of(context).textTheme.titleMedium),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              tr(context, 'The marketing-use consent is in Profile.', 'मार्केटिंग उपयोग की सहमति प्रोफ़ाइल में है।'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
           FutureBuilder<Map<String, dynamic>>(
             future: _proofs,
             builder: (context, snapshot) {
@@ -834,6 +1037,18 @@ class _PlacementScreenState extends State<PlacementScreen> {
                           children: [
                             Text('${row['company_name'] ?? ''} · ${row['role'] ?? ''}'),
                             Text('${row['status'] ?? ''}', style: Theme.of(context).textTheme.bodySmall),
+                            if (row['reason'] != null)
+                              Text(
+                                '${row['reason']}',
+                                style: TextStyle(color: context.palette.danger),
+                              ),
+                            if (row['reward'] is Map)
+                              Text(
+                                '${tr(context, 'Reward', 'इनाम')}: '
+                                '${money((asMap(row['reward'])['amount_paise'] as num?)?.toInt() ?? 0)} · '
+                                '${asMap(row['reward'])['status'] ?? ''}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
                           ],
                         ),
                       ),
@@ -849,7 +1064,25 @@ class _PlacementScreenState extends State<PlacementScreen> {
   }
 }
 
-/* ── Learning: classes, videos, scores, packs (#9) ──────────────────────── */
+/* ── Learning: classes, videos, scores, packs, quizzes (#9) ─────────────── */
+
+class LearningData {
+  const LearningData({
+    required this.classes,
+    required this.videos,
+    required this.scores,
+    required this.packs,
+    required this.dailyQuiz,
+    required this.mockRoles,
+  });
+
+  final Map<String, dynamic> classes;
+  final Map<String, dynamic> videos;
+  final Map<String, dynamic> scores;
+  final Map<String, dynamic> packs;
+  final Map<String, dynamic> dailyQuiz;
+  final Map<String, dynamic> mockRoles;
+}
 
 class LearningScreen extends StatefulWidget {
   const LearningScreen({super.key});
@@ -858,24 +1091,33 @@ class LearningScreen extends StatefulWidget {
 }
 
 class _LearningScreenState extends State<LearningScreen> {
-  late Future<(Map<String, dynamic>, Map<String, dynamic>, Map<String, dynamic>, Map<String, dynamic>)> _future = _load();
+  late Future<LearningData> _future = _load();
 
-  Future<(Map<String, dynamic>, Map<String, dynamic>, Map<String, dynamic>, Map<String, dynamic>)> _load() async {
+  Future<LearningData> _load() async {
     final api = getIt<StudentApi>();
     final values = await Future.wait([
       api.getJson('/v1/me/online-classes'),
       api.getJson('/v1/me/videos'),
       api.getJson('/v1/me/test-scores'),
       api.getJson('/v1/interview-packs'),
+      api.getJson('/v1/quizzes/daily'),
+      api.getJson('/v1/quizzes/mock/roles'),
     ]);
-    return (values[0], values[1], values[2], values[3]);
+    return LearningData(
+      classes: values[0],
+      videos: values[1],
+      scores: values[2],
+      packs: values[3],
+      dailyQuiz: values[4],
+      mockRoles: values[5],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(tr(context, 'Learning', 'लर्निंग'))),
-      body: FutureBuilder<(Map<String, dynamic>, Map<String, dynamic>, Map<String, dynamic>, Map<String, dynamic>)>(
+      body: FutureBuilder<LearningData>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -888,7 +1130,13 @@ class _LearningScreenState extends State<LearningScreen> {
               onRetry: () => setState(() => _future = _load()),
             );
           }
-          final (classes, videos, scores, packs) = snapshot.data!;
+          final data = snapshot.data!;
+          final classes = data.classes;
+          final videos = data.videos;
+          final scores = data.scores;
+          final packs = data.packs;
+          final dailyQuiz = data.dailyQuiz;
+          final mockRoles = data.mockRoles;
           return ListView(
             padding: const EdgeInsets.all(RvmSpacing.lg),
             children: [
@@ -910,12 +1158,27 @@ class _LearningScreenState extends State<LearningScreen> {
               _heading(context, tr(context, 'Videos', 'वीडियो')),
               for (final video in (videos['videos'] as List<dynamic>? ?? const []).whereType<Map<String, dynamic>>())
                 ModuleCard(
+                  onTap: () async {
+                    if (!await confirmCountedPlay(context, video)) return;
+                    if (!context.mounted) return;
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => VideoPlaybackScreen(video: video),
+                      ),
+                    );
+                    if (context.mounted) setState(() => _future = _load());
+                  },
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('${video['title'] ?? ''}'),
                       Text('${tr(context, 'Views left', 'बचे व्यू')}: ${video['views_left'] ?? 0}',
                           style: Theme.of(context).textTheme.bodySmall),
+                      if (video['locked_reason'] != null)
+                        Text(
+                          '${video['locked_reason']}',
+                          style: TextStyle(color: context.palette.warning),
+                        ),
                     ],
                   ),
                 ),
@@ -931,6 +1194,37 @@ class _LearningScreenState extends State<LearningScreen> {
               for (final role in (packs['roles'] as List<dynamic>? ?? const []).whereType<Map<String, dynamic>>())
                 for (final pack in (role['packs'] as List<dynamic>? ?? const []).whereType<Map<String, dynamic>>())
                   ModuleCard(child: Text('${role['name'] ?? ''} · ${pack['title'] ?? ''}')),
+              _heading(context, tr(context, 'Quiz of the day', 'आज की क्विज़')),
+              ModuleCard(
+                onTap: dailyQuiz['available'] == true
+                    ? () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => DailyQuizScreen(quiz: dailyQuiz),
+                        ),
+                      )
+                    : null,
+                child: Text(
+                  dailyQuiz['available'] != true
+                      ? tr(context, 'No quiz today.', 'आज कोई क्विज़ नहीं।')
+                      : dailyQuiz['answered'] == true
+                      ? '${tr(context, 'Answered', 'जवाब दिया')} · ${tr(context, 'Score', 'स्कोर')}: '
+                          '${dailyQuiz['score'] ?? 0}/${dailyQuiz['max_score'] ?? 0}'
+                      : tr(context, 'Answer today\'s quiz', 'आज की क्विज़ के जवाब दें'),
+                ),
+              ),
+              _heading(context, tr(context, 'Mock interview', 'मॉक इंटरव्यू')),
+              for (final role in (mockRoles['roles'] as List<dynamic>? ?? const []).whereType<Map<String, dynamic>>())
+                ModuleCard(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => MockQuizScreen(role: role)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text('${role['name'] ?? ''}')),
+                      const Icon(Icons.chevron_right_rounded),
+                    ],
+                  ),
+                ),
             ],
           );
         },

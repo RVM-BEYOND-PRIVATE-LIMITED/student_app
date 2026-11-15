@@ -1,6 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:core_network/core_network.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/api/student_api.dart';
 import '../../injection.dart';
@@ -67,6 +72,33 @@ class _FeesScreenState extends State<FeesScreen> {
       );
     } finally {
       if (mounted) setState(() => _paying = false);
+    }
+  }
+
+  Future<void> _shareReceipt(Map<String, dynamic> row) async {
+    final id = '${row['id'] ?? ''}';
+    if (id.isEmpty) return;
+    final subject = tr(context, 'RVM receipt', 'RVM रसीद');
+    try {
+      final json = await getIt<StudentApi>().getJson('/v1/me/receipts/$id/pdf');
+      final base64 = '${json['pdf_base64'] ?? ''}';
+      if (base64.isEmpty) return;
+      final dir = await getTemporaryDirectory();
+      final name = '${json['filename'] ?? 'receipt.pdf'}';
+      final file = File('${dir.path}/$name');
+      await file.writeAsBytes(base64Decode(base64), flush: true);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'application/pdf')],
+          subject: subject,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      final failure = error is Failure ? error : const UnknownFailure();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(failureLine(failure, context.l10n))),
+      );
     }
   }
 
@@ -190,6 +222,11 @@ class _FeesScreenState extends State<FeesScreen> {
                                         ),
                                       ],
                                     ),
+                                  ),
+                                  IconButton(
+                                    tooltip: tr(context, 'Share PDF', 'PDF साझा करें'),
+                                    onPressed: () => _shareReceipt(row),
+                                    icon: const Icon(Icons.ios_share_rounded),
                                   ),
                                 ],
                               ),
