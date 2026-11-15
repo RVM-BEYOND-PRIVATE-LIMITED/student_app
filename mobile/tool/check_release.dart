@@ -48,6 +48,23 @@ const reviewedExports = <String, String?>{
       'com.google.android.c2dm.permission.SEND',
   'com.google.firebase.iid.FirebaseInstanceIdReceiver':
       'com.google.android.c2dm.permission.SEND',
+  // The protected video player (student_app #9, VdoCipher). Its playback
+  // service is a MediaSessionService: an external media controller may bind
+  // to it, but it only plays the session the app created and carries no
+  // student data. The media3/work scheduler services are exported only to
+  // JobScheduler, which holds BIND_JOB_SERVICE; the work diagnostics receiver
+  // only to a caller holding DUMP (adb shell, the system).
+  'com.vdocipher.aegis.player.internal.VdoPlaybackService': null,
+  'androidx.media3.exoplayer.scheduler.PlatformScheduler\$PlatformSchedulerService':
+      'android.permission.BIND_JOB_SERVICE',
+  'androidx.work.impl.background.systemjob.SystemJobService':
+      'android.permission.BIND_JOB_SERVICE',
+  'androidx.work.impl.diagnostics.DiagnosticsReceiver':
+      'android.permission.DUMP',
+  // VdoCipher's Cast expanded-controls screen, exported for the Cast
+  // framework only; it shows the same protected session and cannot download
+  // or open the media outside the app.
+  'com.vdocipher.aegis.cast.internal.CustomExpandedControlsActivity': null,
 };
 
 /// The `<application>` meta-data that records the flavor a build runs as,
