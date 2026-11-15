@@ -1,0 +1,104 @@
+/* GENERATED FILE — do not edit by hand.
+ * Source: packages/design-tokens/student.tokens.json
+ * Regenerate: node packages/design-tokens/generate.mjs
+ */
+:root {
+  --student-accent: #F97316;
+  --student-accent-dark: #EA580C;
+  --student-accent-soft: rgba(249, 115, 22, 0.122);
+  --student-accent-tint: #FFF7ED;
+  --student-bg: #F8FAFC;
+  --student-border: #E2E8F0;
+  --student-danger: #E31E24;
+  --student-danger-soft: rgba(227, 30, 36, 0.102);
+  --student-fg1: #1E293B;
+  --student-fg2: #475569;
+  --student-fg3: #94A3B8;
+  --student-header-end: #1A2B53;
+  --student-header-grid: rgba(255, 255, 255, 0.059);
+  --student-header-start: #25396B;
+  --student-info: #3B82F6;
+  --student-info-soft: rgba(59, 130, 246, 0.102);
+  --student-navy: #1E305E;
+  --student-navy-deep: #152443;
+  --student-on-accent: #FFFFFF;
+  --student-outline: #CBD5E1;
+  --student-splash-end: #0E1834;
+  --student-splash-mid: #1A2B53;
+  --student-splash-start: #25396B;
+  --student-success: #16A34A;
+  --student-success-soft: rgba(22, 163, 74, 0.102);
+  --student-surface: #FFFFFF;
+  --student-surface2: #F1F5F9;
+  --student-warning: #F59E0B;
+  --student-warning-soft: rgba(245, 158, 11, 0.102);
+  --student-white: #FFFFFF;
+}
+
+[data-theme='dark'] {
+  --student-accent: #F97316;
+  --student-accent-dark: #FB923C;
+  --student-accent-soft: rgba(249, 115, 22, 0.2);
+  --student-accent-tint: #2B1B0D;
+  --student-bg: #0E1834;
+  --student-border: #2A3B66;
+  --student-danger: #F87171;
+  --student-danger-soft: rgba(248, 113, 113, 0.149);
+  --student-fg1: #F1F5F9;
+  --student-fg2: #CBD5E1;
+  --student-fg3: #94A3B8;
+  --student-header-end: #1A2B53;
+  --student-header-grid: rgba(255, 255, 255, 0.078);
+  --student-header-start: #25396B;
+  --student-info: #60A5FA;
+  --student-info-soft: rgba(96, 165, 250, 0.149);
+  --student-navy: #1E305E;
+  --student-navy-deep: #0E1834;
+  --student-on-accent: #0E1834;
+  --student-outline: #33456F;
+  --student-splash-end: #0E1834;
+  --student-splash-mid: #1A2B53;
+  --student-splash-start: #25396B;
+  --student-success: #22C55E;
+  --student-success-soft: rgba(34, 197, 94, 0.149);
+  --student-surface: #152443;
+  --student-surface2: #1A2B53;
+  --student-warning: #FBBF24;
+  --student-warning-soft: rgba(251, 191, 36, 0.149);
+  --student-white: #FFFFFF;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --student-accent: #F97316;
+    --student-accent-dark: #FB923C;
+    --student-accent-soft: rgba(249, 115, 22, 0.2);
+    --student-accent-tint: #2B1B0D;
+    --student-bg: #0E1834;
+    --student-border: #2A3B66;
+    --student-danger: #F87171;
+    --student-danger-soft: rgba(248, 113, 113, 0.149);
+    --student-fg1: #F1F5F9;
+    --student-fg2: #CBD5E1;
+    --student-fg3: #94A3B8;
+    --student-header-end: #1A2B53;
+    --student-header-grid: rgba(255, 255, 255, 0.078);
+    --student-header-start: #25396B;
+    --student-info: #60A5FA;
+    --student-info-soft: rgba(96, 165, 250, 0.149);
+    --student-navy: #1E305E;
+    --student-navy-deep: #0E1834;
+    --student-on-accent: #0E1834;
+    --student-outline: #33456F;
+    --student-splash-end: #0E1834;
+    --student-splash-mid: #1A2B53;
+    --student-splash-start: #25396B;
+    --student-success: #22C55E;
+    --student-success-soft: rgba(34, 197, 94, 0.149);
+    --student-surface: #152443;
+    --student-surface2: #1A2B53;
+    --student-warning: #FBBF24;
+    --student-warning-soft: rgba(251, 191, 36, 0.149);
+    --student-white: #FFFFFF;
+  }
+}

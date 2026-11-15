@@ -21,8 +21,18 @@ the launch version gate (fail-open), dev and prod configurations, on-device
 crash capture, the capture guard and the device hints (student_app #8), the
 release hardening and release checks (student_app #8), and these screens:
 Splash, Update required, Language, the shared states (skeleton, empty, error
-with request id, offline banner) and a dev-only Developer menu. No Student API endpoint is called yet: the API and
-its contract do not exist (Scheduler_Backend #158, student_app #10).
+with request id, offline banner), Welcome, phone and OTP sign-in, the 18+
+tick and consent lines, the two doors, "I have already paid", the holding
+screen for "I want to join", the Home / Jobs / Profile shell, the Campus web
+view, and a dev-only Developer menu (student_app #2).
+
+The Stage 1A shell calls the published contract (0.5.0): the typed client in
+`lib/core/api/` mirrors its paths and bodies, and
+`test/core/api/student_api_contract_test.dart` fails when the two drift. The
+contract's Stage 1A routes are `planned` on the backend until
+Scheduler_Backend #159 to #162 ship; until then the app is built and tested
+against the contract and its mock server, and the live hand-off checks wait
+for the backend.
 
 ## The API contract
 
@@ -89,6 +99,7 @@ accepts the packages through git as they are, so nothing is vendored.
 ```bash
 cd mobile
 flutter pub get          # also generates lib/l10n/gen/ (not committed)
+bash tool/mock_api.sh    # optional: the contract's mock on 127.0.0.1:3000
 flutter run              # dev build, Student API on this computer
 ```
 
@@ -356,18 +367,17 @@ in the job summary (`tool/size_report.dart`). The report sets no budget (student
 
 ## Waiting on the backend
 
-- Generated Student API client and the drift check: the contract
-  (student_app #10, Scheduler_Backend #158).
-- Session renewal: `StudentAuthInterceptor` is ready, but the renewal call
-  does not exist (Scheduler_Backend #158, #159); until then a refused token
-  ends the session.
+- Stage 1A is live on the server (Scheduler_Backend #159 to #162). The app is
+  built and tested against the published 0.5.0 contract. What remains for
+  student_app #2 is not code: the Campus hand-off pilot (job portal #152) and
+  the on-device weak-network pass (student_app #8).
+- Session renewal goes through the live `/v1/auth/refresh` (`ApiSessionRenewer`).
 - The server's integrity verdict and the bound-phone decision, and the
   refusal screens that show them: Scheduler_Backend #159, #192 (student_app
   #8). Until then the device hints only feed messages.
-- The server's minimum version, feature switches and the student's stage:
-  Scheduler_Backend #158. `VersionSource` answers "unknown" until then, so
-  the launch check lets the app through. A build that cannot read its own
-  version is let through too.
+- The server's minimum version is read from `/v1/config` at launch
+  (`ConfigVersionSource`) and fails open; the feature switches and the
+  student's stage come from the same settings and `Me`.
 
 ## More
 
@@ -375,3 +385,7 @@ in the job summary (`tool/size_report.dart`). The report sets no budget (student
 - `docs/test-device.md`: the test phone and the weak-network profile.
 - `docs/device-checks.md`: the on-phone steps for student_app #8's checks
   (check 1, the capture guard).
+- `docs/release-checklist.md`: the low-cost phone pass (#8, item 8).
+- `docs/play-listing.md`: the Play listing pack (#8, item 10).
+- `docs/launch-runbook.md`: launch, halt and version-gate steps (#8, item 12).
+- `tool/mock_api.sh`: the published contract's mock server (#1 item 12).

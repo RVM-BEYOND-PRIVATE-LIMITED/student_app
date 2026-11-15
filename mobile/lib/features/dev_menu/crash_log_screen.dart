@@ -54,7 +54,7 @@ class _CrashLogView extends StatelessWidget {
         children: [
           Container(
             width: double.infinity,
-            color: StudentColors.surface2,
+            color: context.palette.surface2,
             padding: const EdgeInsets.symmetric(
               horizontal: RvmSpacing.md,
               vertical: RvmSpacing.sm + 4,
@@ -119,19 +119,19 @@ class _RecordCard extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: StudentColors.danger.withValues(alpha: 0.10),
+                    color: context.palette.danger.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: DataText(
                     record.kind.name,
                     size: 11.5,
-                    color: StudentColors.danger,
+                    color: context.palette.danger,
                   ),
                 ),
                 DataText(
                   IstTime.dateTime(record.at, locale),
                   size: 12,
-                  color: StudentColors.fg2,
+                  color: context.palette.fg2,
                 ),
               ],
             ),
@@ -144,14 +144,14 @@ class _RecordCard extends StatelessWidget {
                 constraints: const BoxConstraints(maxHeight: 160),
                 padding: const EdgeInsets.all(RvmSpacing.sm),
                 decoration: BoxDecoration(
-                  color: StudentColors.surface2,
+                  color: context.palette.surface2,
                   borderRadius: BorderRadius.circular(RvmRadii.xs),
                 ),
                 child: SingleChildScrollView(
                   child: DataText(
                     record.stack!,
                     size: 11,
-                    color: StudentColors.fg2,
+                    color: context.palette.fg2,
                   ),
                 ),
               ),

@@ -2,6 +2,8 @@
     <!-- Network access for the Student API. Flutter adds it to debug builds on
          its own; declaring it here makes release builds work too. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Android 13+ (API 33) runtime permission for push notification alerts. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- Backups (student_app #1, item 5): flutter_secure_storage keeps its
          ciphertext in SharedPreferences while the key that decrypts it stays
          in the Android Keystore. The rules below keep that ciphertext, and the
@@ -52,6 +54,10 @@
         <meta-data
             android:name="com.rvm.rvmstudent.FLAVOR"
             android:value="${studentFlavor}" />
+        <!-- Firebase Cloud Messaging default notification channel ID -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="student_rvm_alerts" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

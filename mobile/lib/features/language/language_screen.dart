@@ -44,12 +44,12 @@ class LanguageScreen extends StatelessWidget {
                           height: 52,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: StudentColors.accentSoft,
+                            color: context.palette.accentSoft,
                             borderRadius: BorderRadius.circular(RvmRadii.md),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.translate_rounded,
-                            color: StudentColors.accentDark,
+                            color: context.palette.accentDark,
                           ),
                         ),
                       ),
@@ -59,7 +59,7 @@ class LanguageScreen extends StatelessWidget {
                       Text(
                         l10n.languageSubtitle,
                         style: text.bodyLarge?.copyWith(
-                          color: StudentColors.fg2,
+                          color: context.palette.fg2,
                         ),
                       ),
                       const SizedBox(height: RvmSpacing.lg),
@@ -139,11 +139,11 @@ class _LanguageOption extends StatelessWidget {
       value: selected ? selectedLabel : null,
       excludeSemantics: true,
       child: Material(
-        color: selected ? StudentColors.accentTint : StudentColors.surface,
+        color: selected ? context.palette.accentTint : context.palette.surface,
         shape: RoundedRectangleBorder(
           borderRadius: radius,
           side: BorderSide(
-            color: selected ? StudentColors.accent : StudentColors.border,
+            color: selected ? context.palette.accent : context.palette.border,
             width: selected ? 1.6 : 1,
           ),
         ),
@@ -170,7 +170,7 @@ class _LanguageOption extends StatelessWidget {
                     selected
                         ? Icons.check_circle_rounded
                         : Icons.radio_button_unchecked_rounded,
-                    color: selected ? StudentColors.accent : StudentColors.fg3,
+                    color: selected ? context.palette.accent : context.palette.fg3,
                   ),
                 ],
               ),

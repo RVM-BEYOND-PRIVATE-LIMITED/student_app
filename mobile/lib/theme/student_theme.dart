@@ -14,7 +14,11 @@ import 'student_tokens.dart';
 /// lines, no tight letter spacing (it would crowd joined letters), and Geist
 /// instead of Fraunces for titles, since titles are Devanagari there anyway.
 abstract final class StudentType {
-  static TextTheme textTheme({required bool devanagari}) {
+  static TextTheme textTheme({
+    required bool devanagari,
+    StudentPalette? palette,
+  }) {
+    final p = palette ?? StudentPalette.light;
     final titleFamily = devanagari ? StudentFonts.sans : StudentFonts.serif;
     final titleWeight = devanagari ? FontWeight.w600 : FontWeight.w400;
 
@@ -24,7 +28,7 @@ abstract final class StudentType {
       FontWeight weight,
       double height, {
       double spacing = 0,
-      Color color = StudentColors.fg1,
+      Color? color,
     }) => TextStyle(
       fontFamily: family,
       fontFamilyFallback: StudentFonts.fallback,
@@ -33,7 +37,7 @@ abstract final class StudentType {
       height: devanagari ? math.max(height + 0.1, 1.4) : height,
       leadingDistribution: TextLeadingDistribution.even,
       letterSpacing: devanagari ? 0 : spacing,
-      color: color,
+      color: color ?? p.fg1,
     );
 
     return TextTheme(
@@ -56,7 +60,7 @@ abstract final class StudentType {
         12.5,
         FontWeight.w400,
         1.5,
-        color: StudentColors.fg2,
+        color: p.fg2,
       ),
       labelLarge: style(StudentFonts.sans, 15, FontWeight.w600, 1.3),
       labelMedium: style(
@@ -64,7 +68,7 @@ abstract final class StudentType {
         12.5,
         FontWeight.w500,
         1.35,
-        color: StudentColors.fg2,
+        color: p.fg2,
       ),
       labelSmall: style(
         StudentFonts.mono,
@@ -72,76 +76,97 @@ abstract final class StudentType {
         FontWeight.w500,
         1.4,
         spacing: 0.3,
-        color: StudentColors.fg2,
+        color: p.fg2,
       ),
     );
   }
 
   /// Technical values (request ids, versions, addresses) in Geist Mono.
-  static TextStyle data({double size = 13, Color color = StudentColors.fg1}) =>
-      TextStyle(
-        fontFamily: StudentFonts.mono,
-        fontFamilyFallback: StudentFonts.fallback,
-        fontSize: size,
-        fontWeight: FontWeight.w500,
-        height: 1.4,
-        color: color,
-      );
+  static TextStyle data({
+    double size = 13,
+    Color? color,
+    StudentPalette? palette,
+  }) => TextStyle(
+    fontFamily: StudentFonts.mono,
+    fontFamilyFallback: StudentFonts.fallback,
+    fontSize: size,
+    fontWeight: FontWeight.w500,
+    height: 1.4,
+    color: color ?? (palette ?? StudentPalette.light).fg1,
+  );
 }
 
-/// The student app's theme (student_app #1): the handoff's navy and orange
-/// tokens laid on core_ui's `RvmTheme` structure (the same component themes,
-/// core_ui's `RvmSpacing` and `RvmRadii`). Light only for now.
+/// The student app's theme (student_app #1 and #57): the handoff's navy and
+/// orange tokens laid on core_ui's `RvmTheme` structure (the same component
+/// themes, core_ui's `RvmSpacing` and `RvmRadii`). Light is today's look;
+/// dark is the ink palette on the app's navy.
 abstract final class StudentTheme {
-  /// The theme for a language: Hindi gets the Devanagari type scale.
+  /// The light theme for a language: Hindi gets the Devanagari type scale.
   static ThemeData forLanguageCode(String languageCode) =>
       light(devanagari: languageCode == 'hi');
 
-  static ThemeData light({bool devanagari = false}) {
-    const ink = StudentColors.fg1;
-    const muted = StudentColors.fg2;
-    const canvas = StudentColors.bg;
-    const card = StudentColors.surface;
-    const line = StudentColors.border;
-    const primary = StudentColors.accent;
-    const onPrimary = StudentColors.white;
+  static ThemeData light({bool devanagari = false}) =>
+      _build(StudentPalette.light, Brightness.light, devanagari);
 
-    final base = ColorScheme.fromSeed(seedColor: primary);
+  static ThemeData dark({bool devanagari = false}) =>
+      _build(StudentPalette.dark, Brightness.dark, devanagari);
+
+  static ThemeData _build(
+    StudentPalette palette,
+    Brightness brightness,
+    bool devanagari,
+  ) {
+    final ink = palette.fg1;
+    final muted = palette.fg2;
+    final canvas = palette.bg;
+    final card = palette.surface;
+    final line = palette.border;
+    final primary = palette.accent;
+    final onPrimary = palette.onAccent;
+
+    final base = ColorScheme.fromSeed(
+      seedColor: primary,
+      brightness: brightness,
+    );
     final scheme = base.copyWith(
       primary: primary,
       onPrimary: onPrimary,
-      primaryContainer: const Color(0xFFFFEDD5),
-      onPrimaryContainer: const Color(0xFF9A3412),
-      secondary: StudentColors.navy,
-      onSecondary: StudentColors.white,
-      secondaryContainer: const Color(0xFFE0E7FF),
-      onSecondaryContainer: StudentColors.navy,
-      tertiary: StudentColors.info,
+      primaryContainer: palette.accentTint,
+      onPrimaryContainer: palette.accentDark,
+      secondary: palette.navy,
+      onSecondary: palette.white,
+      secondaryContainer: palette.surface2,
+      onSecondaryContainer: ink,
+      tertiary: palette.info,
       surface: canvas,
       onSurface: ink,
       onSurfaceVariant: muted,
       surfaceContainerLowest: card,
       surfaceContainerLow: card,
       surfaceContainer: card,
-      surfaceContainerHigh: StudentColors.surface2,
-      surfaceContainerHighest: StudentColors.surface2,
-      outline: const Color(0xFFCBD5E1),
+      surfaceContainerHigh: palette.surface2,
+      surfaceContainerHighest: palette.surface2,
+      outline: palette.outline,
       outlineVariant: line,
-      error: StudentColors.danger,
-      onError: StudentColors.white,
-      errorContainer: const Color(0xFFFEE2E2),
-      onErrorContainer: const Color(0xFF991B1B),
+      error: palette.danger,
+      onError: brightness == Brightness.dark ? palette.navyDeep : palette.white,
+      errorContainer: palette.dangerSoft,
+      onErrorContainer: palette.danger,
     );
 
-    final text = StudentType.textTheme(devanagari: devanagari);
+    final text = StudentType.textTheme(
+      devanagari: devanagari,
+      palette: palette,
+    );
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
+      brightness: brightness,
       fontFamily: StudentFonts.sans,
       fontFamilyFallback: StudentFonts.fallback,
       colorScheme: scheme,
       textTheme: text,
+      extensions: [palette],
       scaffoldBackgroundColor: canvas,
       canvasColor: canvas,
       visualDensity: VisualDensity.standard,
@@ -152,8 +177,10 @@ abstract final class StudentTheme {
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: text.titleLarge,
-        iconTheme: const IconThemeData(color: ink, size: 22),
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        iconTheme: IconThemeData(color: ink, size: 22),
+        systemOverlayStyle: brightness == Brightness.dark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
       ),
       cardTheme: CardThemeData(
         color: card,
@@ -163,16 +190,16 @@ abstract final class StudentTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(RvmRadii.md),
-          side: const BorderSide(color: line),
+          side: BorderSide(color: line),
         ),
       ),
-      dividerTheme: const DividerThemeData(color: line, thickness: 1, space: 1),
+      dividerTheme: DividerThemeData(color: line, thickness: 1, space: 1),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: onPrimary,
-          disabledBackgroundColor: StudentColors.surface2,
-          disabledForegroundColor: StudentColors.fg3,
+          disabledBackgroundColor: palette.surface2,
+          disabledForegroundColor: palette.fg3,
           elevation: 0,
           minimumSize: const Size.fromHeight(52),
           padding: const EdgeInsets.symmetric(
@@ -195,7 +222,7 @@ abstract final class StudentTheme {
             vertical: 12,
           ),
           textStyle: text.labelLarge,
-          side: const BorderSide(color: Color(0xFFCBD5E1)),
+          side: BorderSide(color: palette.outline),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(RvmRadii.sm + 2),
           ),
@@ -203,7 +230,7 @@ abstract final class StudentTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: StudentColors.accentDark,
+          foregroundColor: palette.accentDark,
           textStyle: text.labelLarge,
           minimumSize: const Size(48, 44),
           shape: RoundedRectangleBorder(
@@ -226,25 +253,25 @@ abstract final class StudentTheme {
         minLeadingWidth: 20,
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: StudentColors.navy,
-        contentTextStyle: text.bodyMedium?.copyWith(color: StudentColors.white),
+        backgroundColor: palette.navy,
+        contentTextStyle: text.bodyMedium?.copyWith(color: palette.white),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(RvmRadii.sm + 2),
         ),
         elevation: 2,
       ),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
+      progressIndicatorTheme: ProgressIndicatorThemeData(
         color: primary,
-        linearTrackColor: StudentColors.surface2,
-        circularTrackColor: StudentColors.surface2,
+        linearTrackColor: palette.surface2,
+        circularTrackColor: palette.surface2,
       ),
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
-          color: StudentColors.navy,
+          color: palette.navy,
           borderRadius: BorderRadius.circular(RvmRadii.xs),
         ),
-        textStyle: text.bodySmall?.copyWith(color: StudentColors.white),
+        textStyle: text.bodySmall?.copyWith(color: palette.white),
       ),
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: primary,
