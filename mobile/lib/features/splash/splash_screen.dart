@@ -18,20 +18,22 @@ class SplashScreen extends StatelessWidget {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: StudentColors.splashGradient[1],
+        backgroundColor: context.palette.splashGradient[1],
         body: DecoratedBox(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: RadialGradient(
-              center: Alignment(0, -0.55),
+              center: const Alignment(0, -0.55),
               radius: 1.1,
-              colors: StudentColors.splashGradient,
-              stops: [0, 0.45, 1],
+              colors: context.palette.splashGradient,
+              stops: const [0, 0.45, 1],
             ),
           ),
           child: Stack(
             children: [
-              const Positioned.fill(
-                child: CustomPaint(painter: GridPaperPainter()),
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: GridPaperPainter(color: context.palette.headerGrid),
+                ),
               ),
               SafeArea(
                 child: ScrollableCenter(
@@ -50,7 +52,7 @@ class SplashScreen extends StatelessWidget {
                           l10n.splashLoading,
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: StudentColors.fg3),
+                              ?.copyWith(color: context.palette.fg3),
                         ),
                       ],
                     ),
@@ -114,8 +116,8 @@ class _DotProgressState extends State<_DotProgress>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: i == active
-                        ? StudentColors.accent
-                        : StudentColors.white.withValues(alpha: 0.25),
+                        ? context.palette.accent
+                        : context.palette.white.withValues(alpha: 0.25),
                   ),
                 ),
             ],

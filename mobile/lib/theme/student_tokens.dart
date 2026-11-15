@@ -1,50 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// The student design handoff's colours (flutterapps
-/// design/design_handoff_rvm_student_app/lib_reference/rvm_theme.dart), light
-/// theme. Spacing and radii come from core_ui (`RvmSpacing`, `RvmRadii`),
-/// whose steps match the handoff's.
-abstract final class StudentColors {
-  // Brand.
-  static const navy = Color(0xFF1E305E);
-  static const navyDeep = Color(0xFF152443);
-  static const accent = Color(0xFFF97316);
-  static const accentDark = Color(0xFFEA580C);
-  static const accentSoft = Color(0x1FF97316);
-
-  /// The splash's radial gradient, centre to edge.
-  static const splashGradient = [
-    Color(0xFF25396B),
-    Color(0xFF1A2B53),
-    Color(0xFF0E1834),
-  ];
-
-  /// The Welcome header's linear gradient, top left to bottom right: the
-  /// splash's first two steps.
-  static const headerGradient = [Color(0xFF25396B), Color(0xFF1A2B53)];
-
-  /// The faint grid drawn over the navy header (white at about 6 %).
-  static const headerGrid = Color(0x0FFFFFFF);
-
-  /// The fill of a chosen option, such as the selected language.
-  static const accentTint = Color(0xFFFFF7ED);
-
-  // Meaning.
-  static const success = Color(0xFF16A34A);
-  static const warning = Color(0xFFF59E0B);
-  static const danger = Color(0xFFE31E24);
-  static const info = Color(0xFF3B82F6);
-
-  // Surfaces and text (the handoff's "Cloud-Depth" light palette).
-  static const bg = Color(0xFFF8FAFC);
-  static const surface = Color(0xFFFFFFFF);
-  static const surface2 = Color(0xFFF1F5F9);
-  static const border = Color(0xFFE2E8F0);
-  static const fg1 = Color(0xFF1E293B);
-  static const fg2 = Color(0xFF475569);
-  static const fg3 = Color(0xFF94A3B8);
-  static const white = Color(0xFFFFFFFF);
-}
+import 'student_tokens.g.dart';
 
 /// The bundled font families (pubspec.yaml, assets/fonts/SOURCES.md).
 abstract final class StudentFonts {
@@ -63,4 +19,186 @@ abstract final class StudentFonts {
   static const devanagari = 'NotoSansDevanagari';
 
   static const fallback = [devanagari];
+}
+
+/// The student palette (student_app #57). Light is today's look, exactly; dark
+/// follows the brand kit on the app's own navy.
+///
+/// The values live in `packages/design-tokens/student.tokens.json`, one source
+/// for the app and the web version. Every text pair below meets WCAG AA; the
+/// two Light exceptions (white on orange, 2.80:1, and fg3 on bg, 2.45:1) are
+/// today's look and are unchanged, as #60 records.
+///
+/// Dark (on bg #0E1834 unless said):
+/// * fg1  #F1F5F9  15.99:1
+/// * fg2  #CBD5E1  11.80:1
+/// * fg3  #94A3B8   6.83:1
+/// * accent #F97316 6.25:1; navy on accent 6.25:1
+/// * accentDark #FB923C on surface #152443 6.80:1
+/// * success #22C55E 7.69:1, warning #FBBF24 10.49:1,
+///   danger #F87171 6.33:1, info #60A5FA 6.89:1
+@immutable
+class StudentPalette extends ThemeExtension<StudentPalette> {
+  const StudentPalette({
+    required this.navy,
+    required this.navyDeep,
+    required this.accent,
+    required this.accentDark,
+    required this.accentSoft,
+    required this.accentTint,
+    required this.onAccent,
+    required this.white,
+    required this.splashStart,
+    required this.splashMid,
+    required this.splashEnd,
+    required this.headerStart,
+    required this.headerEnd,
+    required this.headerGrid,
+    required this.success,
+    required this.successSoft,
+    required this.warning,
+    required this.warningSoft,
+    required this.danger,
+    required this.dangerSoft,
+    required this.info,
+    required this.infoSoft,
+    required this.bg,
+    required this.surface,
+    required this.surface2,
+    required this.border,
+    required this.outline,
+    required this.fg1,
+    required this.fg2,
+    required this.fg3,
+  });
+
+  factory StudentPalette.fromValues(Map<String, int> values) {
+    Color at(String role) => Color(values[role]!);
+    return StudentPalette(
+      navy: at('navy'),
+      navyDeep: at('navyDeep'),
+      accent: at('accent'),
+      accentDark: at('accentDark'),
+      accentSoft: at('accentSoft'),
+      accentTint: at('accentTint'),
+      onAccent: at('onAccent'),
+      white: at('white'),
+      splashStart: at('splashStart'),
+      splashMid: at('splashMid'),
+      splashEnd: at('splashEnd'),
+      headerStart: at('headerStart'),
+      headerEnd: at('headerEnd'),
+      headerGrid: at('headerGrid'),
+      success: at('success'),
+      successSoft: at('successSoft'),
+      warning: at('warning'),
+      warningSoft: at('warningSoft'),
+      danger: at('danger'),
+      dangerSoft: at('dangerSoft'),
+      info: at('info'),
+      infoSoft: at('infoSoft'),
+      bg: at('bg'),
+      surface: at('surface'),
+      surface2: at('surface2'),
+      border: at('border'),
+      outline: at('outline'),
+      fg1: at('fg1'),
+      fg2: at('fg2'),
+      fg3: at('fg3'),
+    );
+  }
+
+  /// Today's light look, byte for byte.
+  static final light = StudentPalette.fromValues(StudentTokenValues.light);
+
+  /// The ink-dark palette.
+  static final dark = StudentPalette.fromValues(StudentTokenValues.dark);
+
+  final Color navy;
+  final Color navyDeep;
+  final Color accent;
+  final Color accentDark;
+  final Color accentSoft;
+  final Color accentTint;
+  final Color onAccent;
+  final Color white;
+  final Color splashStart;
+  final Color splashMid;
+  final Color splashEnd;
+  final Color headerStart;
+  final Color headerEnd;
+  final Color headerGrid;
+  final Color success;
+  final Color successSoft;
+  final Color warning;
+  final Color warningSoft;
+  final Color danger;
+  final Color dangerSoft;
+  final Color info;
+  final Color infoSoft;
+  final Color bg;
+  final Color surface;
+  final Color surface2;
+  final Color border;
+  final Color outline;
+  final Color fg1;
+  final Color fg2;
+  final Color fg3;
+
+  /// The splash's radial gradient, centre to edge. Navy in both themes.
+  List<Color> get splashGradient => [splashStart, splashMid, splashEnd];
+
+  /// The Welcome header's linear gradient, top left to bottom right. Navy in
+  /// both themes.
+  List<Color> get headerGradient => [headerStart, headerEnd];
+
+  /// The palette of the nearest [Theme]; the light one when none is set (the
+  /// error screens that draw before a theme exists).
+  static StudentPalette of(BuildContext context) =>
+      Theme.of(context).extension<StudentPalette>() ?? light;
+
+  @override
+  StudentPalette copyWith() => this;
+
+  @override
+  StudentPalette lerp(ThemeExtension<StudentPalette>? other, double t) {
+    if (other is! StudentPalette) return this;
+    Color mix(Color a, Color b) => Color.lerp(a, b, t)!;
+    return StudentPalette(
+      navy: mix(navy, other.navy),
+      navyDeep: mix(navyDeep, other.navyDeep),
+      accent: mix(accent, other.accent),
+      accentDark: mix(accentDark, other.accentDark),
+      accentSoft: mix(accentSoft, other.accentSoft),
+      accentTint: mix(accentTint, other.accentTint),
+      onAccent: mix(onAccent, other.onAccent),
+      white: mix(white, other.white),
+      splashStart: mix(splashStart, other.splashStart),
+      splashMid: mix(splashMid, other.splashMid),
+      splashEnd: mix(splashEnd, other.splashEnd),
+      headerStart: mix(headerStart, other.headerStart),
+      headerEnd: mix(headerEnd, other.headerEnd),
+      headerGrid: mix(headerGrid, other.headerGrid),
+      success: mix(success, other.success),
+      successSoft: mix(successSoft, other.successSoft),
+      warning: mix(warning, other.warning),
+      warningSoft: mix(warningSoft, other.warningSoft),
+      danger: mix(danger, other.danger),
+      dangerSoft: mix(dangerSoft, other.dangerSoft),
+      info: mix(info, other.info),
+      infoSoft: mix(infoSoft, other.infoSoft),
+      bg: mix(bg, other.bg),
+      surface: mix(surface, other.surface),
+      surface2: mix(surface2, other.surface2),
+      border: mix(border, other.border),
+      outline: mix(outline, other.outline),
+      fg1: mix(fg1, other.fg1),
+      fg2: mix(fg2, other.fg2),
+      fg3: mix(fg3, other.fg3),
+    );
+  }
+}
+
+extension StudentPaletteContext on BuildContext {
+  StudentPalette get palette => StudentPalette.of(this);
 }

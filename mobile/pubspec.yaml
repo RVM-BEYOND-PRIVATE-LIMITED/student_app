@@ -36,6 +36,19 @@ dependencies:
   # The emulator hint (student_app #8, item 2): AndroidDeviceInfo's
   # isPhysicalDevice. Same constraint as the Team app.
   device_info_plus: ^12.4.0
+  # The centre's call button and the Campus hand-off in the Jobs tab
+  # (student_app #2, items 5, 8 and 9).
+  url_launcher: ^6.3.0
+  webview_flutter: ^4.10.0
+  # The Android file chooser for Campus's résumé upload (student_app #2).
+  webview_flutter_android: ^4.12.0
+  # The Campus web view's file upload (résumé upload, student_app #2 item 9).
+  file_picker: ^8.3.0
+
+  # Firebase Crashlytics & Cloud Messaging
+  firebase_core: ^5.1.0
+  firebase_crashlytics: ^6.0.1
+  firebase_messaging: ^17.0.1
 
   # The Team app's shared packages (item 3), from team_app at a pinned commit.
   # 07bb9e3 is team_app's develop after PR #107 (merge of #99-#101, #106 and
@@ -44,25 +57,13 @@ dependencies:
   # team_app main commit once develop is promoted. team_app is public, so pub
   # needs no credentials.
   core_network:
-    git:
-      url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
-      path: flutter_app/packages/core_network
-      ref: 07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa
+    path: packages/core_network
   core_auth:
-    git:
-      url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
-      path: flutter_app/packages/core_auth
-      ref: 07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa
+    path: packages/core_auth
   core_bloc:
-    git:
-      url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
-      path: flutter_app/packages/core_bloc
-      ref: 07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa
+    path: packages/core_bloc
   core_ui:
-    git:
-      url: https://github.com/RVM-BEYOND-PRIVATE-LIMITED/team_app.git
-      path: flutter_app/packages/core_ui
-      ref: 07bb9e3dbbf52e41182c36bf94e9d3ba05f97bfa
+    path: packages/core_ui
 
 dev_dependencies:
   flutter_test:

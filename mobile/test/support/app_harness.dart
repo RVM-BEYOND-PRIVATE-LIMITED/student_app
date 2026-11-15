@@ -9,8 +9,10 @@ import 'package:rvm_student/core/crash/crash_log.dart';
 import 'package:rvm_student/core/env/student_env.dart';
 import 'package:rvm_student/core/security/device_hints.dart';
 import 'package:rvm_student/core/version/version_gate.dart';
+import 'package:rvm_student/features/auth/bloc/auth_bloc.dart';
 import 'package:rvm_student/features/language/language_store.dart';
 import 'package:rvm_student/features/startup/bloc/startup_bloc.dart';
+import 'package:rvm_student/features/theme/theme_store.dart';
 import 'package:rvm_student/injection.dart';
 import 'package:rvm_student/l10n/l10n.dart';
 
@@ -76,6 +78,7 @@ class AppHarness {
     addTearDown(tester.platformDispatcher.clearLocalesTestValue);
 
     final saved = await LanguageStore(store).read();
+    final savedTheme = await ThemeStore(store).read();
     configureDependencies(
       env: env,
       appInfo: appInfo,
@@ -85,11 +88,13 @@ class AppHarness {
       connectivityCheck: connectivityCheck,
       deviceLocales: deviceLocales,
       savedLanguage: saved,
+      savedTheme: savedTheme,
       versionSource: versionSource,
       httpAdapter: httpAdapter,
       deviceHints: deviceHints,
     );
     getIt<StartupBloc>().add(const StartupStarted());
+    getIt<AuthBloc>().add(const AuthStarted());
     await tester.pumpWidget(const StudentApp());
     if (settle) await tester.pumpAndSettle();
   }

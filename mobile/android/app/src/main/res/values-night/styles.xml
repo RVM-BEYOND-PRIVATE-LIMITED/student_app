@@ -3,8 +3,10 @@
     <!-- The splash is navy in dark mode too, so it matches the Flutter splash. -->
     <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:forceDarkAllowed">false</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@color/launch_navy</item>
+        <item name="android:forceDarkAllowed">false</item>
     </style>
 </resources>

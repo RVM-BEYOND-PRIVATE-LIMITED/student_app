@@ -19,14 +19,16 @@ class GearMark extends StatelessWidget {
     return ExcludeSemantics(
       child: SizedBox.square(
         dimension: size,
-        child: const CustomPaint(painter: _GearMarkPainter()),
+        child: CustomPaint(painter: _GearMarkPainter(context.palette)),
       ),
     );
   }
 }
 
 class _GearMarkPainter extends CustomPainter {
-  const _GearMarkPainter();
+  const _GearMarkPainter(this.palette);
+
+  final StudentPalette palette;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -36,7 +38,7 @@ class _GearMarkPainter extends CustomPainter {
     final outer = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1 * s
-      ..color = StudentColors.white.withValues(alpha: 0.16);
+      ..color = palette.white.withValues(alpha: 0.16);
     final circumference = 2 * math.pi * 52 * s;
     final steps = (circumference / (8 * s)).floor().clamp(1, 400);
     final sweep = (2 * s) / (52 * s);
@@ -54,7 +56,7 @@ class _GearMarkPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.4 * s
       ..strokeCap = StrokeCap.round
-      ..color = StudentColors.accent;
+      ..color = palette.accent;
     canvas.drawCircle(c, 26 * s, gear);
     for (var i = 0; i < 8; i++) {
       final a = i * math.pi / 4;
@@ -65,12 +67,13 @@ class _GearMarkPainter extends CustomPainter {
     final hub = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.4 * s
-      ..color = StudentColors.white;
+      ..color = palette.white;
     canvas.drawCircle(c, 9 * s, hub);
   }
 
   @override
-  bool shouldRepaint(_GearMarkPainter oldDelegate) => false;
+  bool shouldRepaint(_GearMarkPainter oldDelegate) =>
+      oldDelegate.palette != palette;
 }
 
 /// "RVM" and the translated word for student, the app's name as a wordmark.
@@ -78,20 +81,21 @@ class StudentWordmark extends StatelessWidget {
   const StudentWordmark({
     super.key,
     this.size = 30,
-    this.color = StudentColors.white,
+    this.color,
   });
 
   final double size;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final wordColor = color ?? context.palette.white;
     final base = TextStyle(
       fontFamily: StudentFonts.sans,
       fontFamilyFallback: StudentFonts.fallback,
       fontSize: size,
       height: 1.3,
-      color: color,
+      color: wordColor,
     );
     return Semantics(
       label: context.l10n.appTitle,
@@ -111,7 +115,7 @@ class StudentWordmark extends StatelessWidget {
               text: context.l10n.brandStudent,
               style: base.copyWith(
                 fontWeight: FontWeight.w400,
-                color: StudentColors.accent,
+                color: context.palette.accent,
               ),
             ),
           ],
@@ -124,7 +128,7 @@ class StudentWordmark extends StatelessWidget {
 
 /// The faint graph-paper grid of the handoff's navy headers.
 class GridPaperPainter extends CustomPainter {
-  const GridPaperPainter({this.color = const Color(0x0DFFFFFF), this.gap = 26});
+  const GridPaperPainter({required this.color, this.gap = 26});
 
   final Color color;
   final double gap;

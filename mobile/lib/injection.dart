@@ -3,17 +3,23 @@ import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 
+import 'core/api/models.dart';
+import 'core/api/student_api.dart';
 import 'core/app_info.dart';
 import 'core/crash/crash_log.dart';
 import 'core/env/student_env.dart';
 import 'core/network/student_dio.dart';
 import 'core/security/device_hints.dart';
+import 'core/session/student_renewer.dart';
 import 'core/session/student_session.dart';
 import 'core/version/version_gate.dart';
+import 'features/auth/bloc/auth_bloc.dart';
 import 'features/connectivity/connectivity_bloc.dart';
 import 'features/language/bloc/language_bloc.dart';
 import 'features/language/language_store.dart';
 import 'features/startup/bloc/startup_bloc.dart';
+import 'features/theme/theme_controller.dart';
+import 'features/theme/theme_store.dart';
 import 'l10n/l10n.dart';
 
 final GetIt getIt = GetIt.instance;
@@ -38,11 +44,13 @@ void configureDependencies({
   Future<bool> Function()? connectivityCheck,
   required List<Locale> deviceLocales,
   AppLanguage? savedLanguage,
+  SavedTheme? savedTheme,
   VersionSource versionSource = const UnpublishedVersionSource(),
   HttpClientAdapter? httpAdapter,
   DeviceHintsSource? deviceHints,
 }) {
   final session = StudentSession(secureStore);
+  final renewer = ApiSessionRenewer(session);
   final language = LanguageBloc(
     store: LanguageStore(secureStore),
     deviceDefault: AppLanguage.fromDevice(deviceLocales),
@@ -68,8 +76,9 @@ void configureDependencies({
     ..registerSingleton<ConnectivityBloc>(
       ConnectivityBloc(connectivity, check: connectivityCheck),
     )
-    // The Student API client. Nothing calls it yet: its calls come with the
-    // generated client once the contract is published (student_app #10).
+    ..registerSingleton<ApiSessionRenewer>(renewer)
+    // The Student API client, against the published contract (student_app
+    // #10). The renewer is filled in when the client exists.
     ..registerLazySingleton<Dio>(
       () => StudentDio.create(
         env: env,
@@ -77,7 +86,34 @@ void configureDependencies({
         appVersion: appInfo.isKnown ? appInfo.version : null,
         languageTag: () => language.state.language.name,
         session: session,
+        renewer: renewer,
         adapter: httpAdapter,
+      ),
+    )
+    ..registerLazySingleton<StudentApi>(() {
+      final api = StudentApi(getIt<Dio>());
+      renewer.attach(api);
+      return api;
+    })
+    ..registerLazySingleton<ThemeController>(
+      () => ThemeController(
+        api: getIt<StudentApi>(),
+        store: ThemeStore(secureStore),
+        saved:
+            savedTheme ??
+            const SavedTheme(
+              choice: ThemeChoice.light,
+              open: false,
+              pending: false,
+            ),
+      ),
+    )
+    // Sign-in, onboarding and the signed-in account (student_app #2).
+    ..registerSingleton<AuthBloc>(
+      AuthBloc(
+        api: getIt<StudentApi>(),
+        session: session,
+        appVersion: appInfo.isKnown ? appInfo.version : null,
       ),
     );
 }

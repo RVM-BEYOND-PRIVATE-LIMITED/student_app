@@ -11,13 +11,13 @@ class DataText extends StatelessWidget {
     this.value, {
     super.key,
     this.size = 13,
-    this.color = StudentColors.fg1,
+    this.color,
     this.textAlign,
   });
 
   final String value;
   final double size;
-  final Color color;
+  final Color? color;
   final TextAlign? textAlign;
 
   @override
@@ -25,7 +25,10 @@ class DataText extends StatelessWidget {
     return SelectableText(
       value,
       textAlign: textAlign,
-      style: StudentType.data(size: size, color: color),
+      style: StudentType.data(
+        size: size,
+        color: color ?? context.palette.fg1,
+      ),
     );
   }
 }

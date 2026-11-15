@@ -41,6 +41,13 @@ const minTargetSdk = 36;
 const reviewedExports = <String, String?>{
   'com.rvm.rvmstudent.MainActivity': null,
   'androidx.profileinstaller.ProfileInstallReceiver': 'android.permission.DUMP',
+  // Firebase Cloud Messaging (student_app #4 push, added with the Stage 1A
+  // foundation). Both receive the c2dm broadcast; only a caller holding the
+  // Google c2dm SEND permission can reach them.
+  'io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingReceiver':
+      'com.google.android.c2dm.permission.SEND',
+  'com.google.firebase.iid.FirebaseInstanceIdReceiver':
+      'com.google.android.c2dm.permission.SEND',
 };
 
 /// The `<application>` meta-data that records the flavor a build runs as,

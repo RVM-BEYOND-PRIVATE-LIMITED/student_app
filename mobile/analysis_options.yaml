@@ -5,6 +5,9 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - lib/l10n/gen/**
+    # Vendored, unchanged copies of team_app core packages (mobile/packages/
+    # VENDORED.md). Their own lint set belongs to team_app.
+    - packages/**
 
 linter:
   rules:

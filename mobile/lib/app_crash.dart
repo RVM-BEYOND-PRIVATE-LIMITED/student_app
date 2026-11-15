@@ -1,14 +1,81 @@
 import 'dart:async';
 
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'core/crash/crash_log.dart';
+import 'firebase_bootstrap.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'theme/student_tokens.dart';
 
-/// Sends every uncaught error to [CrashLog] (student_app #1, item 12), the
-/// Team app's three hooks (rvm_team_app lib/main.dart) without Crashlytics:
+/// Sends every error to Firebase Crashlytics if available.
+abstract final class CrashReporter {
+  static bool _available = false;
+
+  /// True once Firebase Crashlytics initialised successfully.
+  static bool get available => _available;
+
+  static Future<void> init() async {
+    try {
+      await ensureFirebase();
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+      _available = true;
+      if (kDebugMode) {
+        debugPrint('Firebase Crashlytics initialised successfully.');
+      }
+    } catch (e) {
+      _available = false;
+      if (kDebugMode) {
+        debugPrint(
+          'Firebase Crashlytics unavailable ($e), falling back to local-only logging.',
+        );
+      }
+    }
+  }
+
+  static void note(String key, String value) {
+    if (!_available) return;
+    try {
+      FirebaseCrashlytics.instance.setCustomKey(key, value);
+    } catch (_) {}
+  }
+
+  static void setUserIdentifier(String identifier) {
+    if (!_available) return;
+    try {
+      FirebaseCrashlytics.instance.setUserIdentifier(identifier);
+    } catch (_) {}
+  }
+
+  static Future<void> recordFlutterError(FlutterErrorDetails details) async {
+    if (!_available) return;
+    try {
+      await FirebaseCrashlytics.instance.recordFlutterError(details);
+    } catch (_) {}
+  }
+
+  static Future<void> record(
+    Object error,
+    StackTrace? stack, {
+    String? reason,
+    bool fatal = false,
+  }) async {
+    if (!_available) return;
+    try {
+      await FirebaseCrashlytics.instance.recordError(
+        error,
+        stack,
+        reason: reason,
+        fatal: fatal,
+        printDetails: false,
+      );
+    } catch (_) {}
+  }
+}
+
+/// Sends every uncaught error to [CrashLog] (student_app #1, item 12) and
+/// [CrashReporter] (Firebase Crashlytics):
 ///
 /// * `FlutterError.onError` for framework errors;
 /// * `PlatformDispatcher.onError` for errors no zone caught;
@@ -28,9 +95,11 @@ void installCrashCapture(CrashLogStore store) {
         kind: CrashKind.flutter,
       ),
     );
+    unawaited(CrashReporter.recordFlutterError(details));
   };
   PlatformDispatcher.instance.onError = (error, stack) {
     unawaited(CrashLog.record(error, stack, kind: CrashKind.platform));
+    unawaited(CrashReporter.record(error, stack, fatal: true));
     return true;
   };
   ErrorWidget.builder = (_) => const SafeErrorView();
@@ -39,6 +108,7 @@ void installCrashCapture(CrashLogStore store) {
 /// The `runZonedGuarded` handler.
 void recordZoneError(Object error, StackTrace stack) {
   unawaited(CrashLog.record(error, stack, kind: CrashKind.zone));
+  unawaited(CrashReporter.record(error, stack, fatal: true));
 }
 
 /// Shown in place of Flutter's red error screen when a widget fails to build.
@@ -51,17 +121,17 @@ class SafeErrorView extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.ltr,
       child: ColoredBox(
-        color: StudentColors.bg,
+        color: context.palette.bg,
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.error_outline_rounded,
                   size: 40,
-                  color: StudentColors.danger,
+                  color: context.palette.danger,
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -71,12 +141,12 @@ class SafeErrorView extends StatelessWidget {
                       'Something went wrong. Please close the app and open it '
                           'again.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: StudentFonts.sans,
                     fontFamilyFallback: StudentFonts.fallback,
                     fontSize: 15,
                     height: 1.5,
-                    color: StudentColors.fg1,
+                    color: context.palette.fg1,
                   ),
                 ),
               ],
