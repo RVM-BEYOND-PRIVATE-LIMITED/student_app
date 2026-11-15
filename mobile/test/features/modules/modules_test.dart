@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rvm_student/core/api/models.dart';
+import 'package:rvm_student/features/modules/learning_quizzes.dart';
 import 'package:rvm_student/features/modules/more_tab.dart';
 
 import '../../support/screen.dart';
@@ -53,6 +54,61 @@ void main() {
     });
     expect(undertaking.videoUri.toString(), contains('abc'));
     expect(undertaking.terms.single.required, isTrue);
+  });
+
+  test('a quiz question reads the contract shape and skips broken rows', () {
+    final questions = QuizQuestion.listFromJson([
+      {
+        'id': 'q1',
+        'prompt': 'Which view shows the top of a part?',
+        'options': [
+          {'key': 'a', 'text': 'Plan'},
+          {'key': 'b', 'text': 'Elevation'},
+        ],
+      },
+      {'id': 'q2'},
+    ]);
+
+    expect(questions, hasLength(1));
+    expect(questions.single.prompt, contains('top'));
+    expect(questions.single.options.map((o) => o.key), ['a', 'b']);
+  });
+
+  testWidgets('the daily quiz shows its questions and waits for every answer',
+      (tester) async {
+    await tester.pumpWidget(
+      localized(
+        DailyQuizScreen(
+          quiz: {
+            'date': '2026-11-15',
+            'available': true,
+            'answered': false,
+            'score': null,
+            'max_score': null,
+            'questions': [
+              {
+                'id': 'q1',
+                'prompt': 'Which view shows the top of a part?',
+                'options': [
+                  {'key': 'a', 'text': 'Plan'},
+                  {'key': 'b', 'text': 'Elevation'},
+                ],
+              },
+            ],
+          },
+        ),
+      ),
+    );
+
+    expect(find.text('Which view shows the top of a part?'), findsOneWidget);
+    final send = tester.widget<FilledButton>(find.byType(FilledButton));
+    expect(send.onPressed, isNull);
+
+    await tester.tap(find.text('Elevation'));
+    await tester.pump();
+
+    final enabled = tester.widget<FilledButton>(find.byType(FilledButton));
+    expect(enabled.onPressed, isNotNull);
   });
 
   testWidgets('the More tab lists the modules in English and Hindi', (tester) async {

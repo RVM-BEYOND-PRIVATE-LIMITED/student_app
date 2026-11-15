@@ -40,6 +40,8 @@ class _JoinScreenState extends State<JoinScreen> {
   final Set<String> _terms = {};
   String _idType = 'aadhaar';
   final _idLast4 = TextEditingController();
+  final _referral = TextEditingController();
+  int? _discountPaise;
 
   Future<(List<JoiningCourse>, Undertaking, Registration?, List<Branch>, List<BatchOption>)> _load() async {
     final api = getIt<StudentApi>();
@@ -87,6 +89,26 @@ class _JoinScreenState extends State<JoinScreen> {
     _terms
       ..clear()
       ..addAll(registration.termsAccepted);
+  }
+
+  Future<void> _applyReferral() async {
+    final code = _referral.text.trim();
+    if (code.isEmpty) return;
+    try {
+      final result = await getIt<StudentApi>().postJson(
+        '/v1/me/referral-code',
+        {'code': code},
+      );
+      if (!mounted) return;
+      setState(() => _discountPaise = (result['discount_paise'] as num?)?.toInt());
+      _toast(
+        result['applied'] == true
+            ? tr(context, 'Referral code applied.', 'रेफ़रल कोड लागू हुआ।')
+            : tr(context, 'This code could not be applied.', 'यह कोड लागू नहीं हो सका।'),
+      );
+    } catch (error) {
+      _error(error);
+    }
   }
 
   Future<void> _save() async {
@@ -256,6 +278,32 @@ class _JoinScreenState extends State<JoinScreen> {
           return ListView(
             padding: const EdgeInsets.all(RvmSpacing.lg),
             children: [
+              Text(tr(context, 'Referral code', 'रेफ़रल कोड'),
+                  style: Theme.of(context).textTheme.titleMedium),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _referral,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: InputDecoration(
+                        hintText: tr(context, 'A friend\'s code', 'किसी मित्र का कोड'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    onPressed: _applyReferral,
+                    child: Text(tr(context, 'Apply', 'लागू करें')),
+                  ),
+                ],
+              ),
+              if (_discountPaise != null)
+                Text(
+                  '${tr(context, 'Discount', 'छूट')}: ${money(_discountPaise!)}',
+                  style: TextStyle(color: context.palette.success),
+                ),
+              const SizedBox(height: RvmSpacing.md),
               if (registration == null) ...[
                 Text(tr(context, 'Choose a course', 'कोर्स चुनें'),
                     style: Theme.of(context).textTheme.titleMedium),

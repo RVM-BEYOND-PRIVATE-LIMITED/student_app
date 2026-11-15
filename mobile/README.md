@@ -23,28 +23,31 @@ release hardening and release checks (student_app #8), and these screens:
 Splash, Update required, Language, the shared states (skeleton, empty, error
 with request id, offline banner), Welcome, phone and OTP sign-in, the 18+
 tick and consent lines, the two doors, "I have already paid", the holding
-screen for "I want to join", the Home / Jobs / Profile shell, the Campus web
-view, and a dev-only Developer menu (student_app #2).
+screen for "I want to join", the Home / Jobs / More / Profile shell, the
+Campus web view, and a dev-only Developer menu (student_app #2). The Stage 3/4
+modules are there too: joining (courses, registration, undertaking, ID upload,
+payment order and batch), fees and receipts with the receipt PDF, attendance
+and corrections, timetable, announcements, notifications, complaints,
+community, visitor lectures/quizzes/visits, placement proof and payout
+account, referral, learning (online classes, protected VdoCipher playback with
+the server's heartbeat, test scores, interview packs, the daily quiz and the
+timed mock interview).
 
-The Stage 1A shell calls the published contract (0.5.0): the typed client in
-`lib/core/api/` mirrors its paths and bodies, and
-`test/core/api/student_api_contract_test.dart` fails when the two drift. The
-contract's Stage 1A routes are `planned` on the backend until
-Scheduler_Backend #159 to #162 ship; until then the app is built and tested
-against the contract and its mock server, and the live hand-off checks wait
-for the backend.
+The app calls the published contract (0.25.0, 105 live operations): the typed
+client in `lib/core/api/` mirrors the paths and bodies the app uses, and
+`test/core/api/student_api_contract_test.dart` fails when the two drift.
 
 ## The API contract
 
 The app is built against the published Student API contract in
 [`packages/openapi`](../packages/openapi/README.md), never against guesses. That file is a
 copy of the backend's contract (the Student API is built in the backend repository, not here).
-**Nothing is published yet**: `info.version` is `0.0.0` and there are no paths, so no endpoint
-is called by the app today.
+It is at **0.25.0**, with `x-source-commit` naming the backend commit it was copied from.
 
-When the first contract is published, `packages/openapi/README.md` says how to start a mock
-server from its examples and how to pick a named example; point the dev configuration's API
-base URL at the mock. The Dart client is generated from that file with no hand edits.
+`packages/openapi/README.md` says how to start a mock server from its examples and how to pick a
+named example; point the dev configuration's API base URL at the mock. The Dart client is
+generated from that file with no hand edits (`tool/generate_student_api.sh --check` fails CI on
+drift).
 
 ## Flutter version
 
