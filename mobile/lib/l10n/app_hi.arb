@@ -218,6 +218,12 @@
   "appearanceDone": "ठीक है",
   "profileConsents": "सहमतियाँ",
   "profileNoConsents": "अभी कोई सहमति दर्ज नहीं है।",
+  "profileDeleteRequest": "खाता हटाने के लिए कहें",
+  "profileDeleteTitle": "खाता हटाएँ",
+  "profileDeleteReason": "आप क्यों जाना चाहते हैं? (वैकल्पिक)",
+  "profileDeleteCancel": "रद्द",
+  "profileDeleteSend": "अनुरोध भेजें",
+  "profileDeleteSent": "आपका अनुरोध सेंटर को भेज दिया गया। अपने आप कुछ नहीं हटेगा।",
   "profileSignOut": "साइन आउट करें",
   "profileSignOutNote": "इससे आप इस फ़ोन पर साइन आउट होंगे। आपका खाता आपके सेंटर पर रहेगा।",
 
