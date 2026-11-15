@@ -323,6 +323,48 @@ class _GroupPostsState extends State<_GroupPosts> {
     }
   }
 
+  Future<void> _react(Map<String, dynamic> post) async {
+    try {
+      final id = '${post['id']}';
+      if (post['reacted'] == true) {
+        await getIt<StudentApi>().deletePath('/v1/community/posts/$id/reaction');
+      } else {
+        await getIt<StudentApi>().putJson('/v1/community/posts/$id/reaction');
+      }
+      _reload();
+    } catch (_) {}
+  }
+
+  Future<void> _report(Map<String, dynamic> post) async {
+    final reason = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(tr(context, 'Report post', 'पोस्ट रिपोर्ट करें')),
+        content: TextField(
+          controller: reason,
+          decoration: InputDecoration(hintText: tr(context, 'Why?', 'क्यों?')),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr(context, 'Cancel', 'रद्द'))),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(tr(context, 'Report', 'रिपोर्ट'))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await getIt<StudentApi>().postJson(
+        '/v1/community/posts/${post['id']}/report',
+        {'reason': reason.text.trim()},
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr(context, 'Reported.', 'रिपोर्ट कर दिया।'))),
+      );
+      _reload();
+    } catch (_) {}
+  }
+
   Future<void> _open(Map<String, dynamic> post) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -371,8 +413,28 @@ class _GroupPostsState extends State<_GroupPosts> {
                         const SizedBox(height: 4),
                         Text('${post['body'] ?? ''}'),
                         const SizedBox(height: 4),
-                        Text('${post['comment_count'] ?? 0} · ${post['reaction_count'] ?? 0}',
-                            style: Theme.of(context).textTheme.bodySmall),
+                        Row(
+                          children: [
+                            Text('${post['comment_count'] ?? 0} · ${post['reaction_count'] ?? 0}',
+                                style: Theme.of(context).textTheme.bodySmall),
+                            const Spacer(),
+                            IconButton(
+                              tooltip: tr(context, 'React', 'रिएक्ट'),
+                              onPressed: () => _react(post),
+                              icon: Icon(
+                                post['reacted'] == true
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                size: 18,
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: tr(context, 'Report', 'रिपोर्ट'),
+                              onPressed: () => _report(post),
+                              icon: const Icon(Icons.flag_outlined, size: 18),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -468,10 +530,60 @@ class _VisitorScreenState extends State<VisitorScreen> {
     return (values[0], values[1], values[2]);
   }
 
+  Future<void> _book() async {
+    final location = TextEditingController();
+    final at = TextEditingController();
+    var kind = 'demo_class';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialog) => AlertDialog(
+          title: Text(tr(context, 'Book a visit', 'विज़िट बुक करें')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: kind,
+                decoration: InputDecoration(labelText: tr(context, 'Kind', 'प्रकार')),
+                items: [
+                  DropdownMenuItem(value: 'demo_class', child: Text(tr(context, 'Demo class', 'डेमो क्लास'))),
+                  DropdownMenuItem(value: 'centre_visit', child: Text(tr(context, 'Centre visit', 'सेंटर विज़िट'))),
+                  DropdownMenuItem(value: 'counsellor_call', child: Text(tr(context, 'Counsellor call', 'काउंसलर कॉल'))),
+                ],
+                onChanged: (value) => setDialog(() => kind = value ?? 'demo_class'),
+              ),
+              TextField(controller: location, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: tr(context, 'Centre id', 'सेंटर आईडी'))),
+              TextField(controller: at, decoration: InputDecoration(labelText: tr(context, 'When (YYYY-MM-DDTHH:MM:SS+05:30)', 'कब'))),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr(context, 'Cancel', 'रद्द'))),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(tr(context, 'Book', 'बुक'))),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await getIt<StudentApi>().postJson('/v1/visitor/visits', {
+        'kind': kind,
+        'location_id': int.tryParse(location.text.trim()) ?? 0,
+        'preferred_at': at.text.trim(),
+      });
+      if (!mounted) return;
+      setState(() => _future = _load());
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(tr(context, 'Visits and free lectures', 'विज़िट और मुफ़्त लेक्चर'))),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _book,
+        icon: const Icon(Icons.event_available_rounded),
+        label: Text(tr(context, 'Book', 'बुक')),
+      ),
       body: FutureBuilder<(Map<String, dynamic>, Map<String, dynamic>, Map<String, dynamic>)>(
         future: _future,
         builder: (context, snapshot) {

@@ -138,6 +138,12 @@ class _ProfileTabState extends State<ProfileTab> {
           l10n.profileSignOutNote,
           style: text.bodySmall?.copyWith(color: context.palette.fg3),
         ),
+        const SizedBox(height: RvmSpacing.lg),
+        OutlinedButton.icon(
+          onPressed: _busy ? null : _requestDeletion,
+          icon: const Icon(Icons.delete_outline_rounded),
+          label: Text(l10n.profileDeleteRequest),
+        ),
       ],
     );
   }
@@ -243,6 +249,40 @@ class _ProfileTabState extends State<ProfileTab> {
       // The row keeps its state; the student can try again.
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _requestDeletion() async {
+    final l10n = context.l10n;
+    final reason = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.profileDeleteTitle),
+        content: TextField(
+          controller: reason,
+          minLines: 2,
+          maxLines: 4,
+          decoration: InputDecoration(hintText: l10n.profileDeleteReason),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.profileDeleteCancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(l10n.profileDeleteSend)),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await getIt<StudentApi>().postJson(
+        '/v1/me/deletion-request',
+        {'reason': reason.text.trim()},
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.profileDeleteSent)),
+      );
+    } catch (_) {
+      // The student can try again.
     }
   }
 

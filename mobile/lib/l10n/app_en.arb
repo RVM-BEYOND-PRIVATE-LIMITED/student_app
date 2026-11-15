@@ -241,6 +241,12 @@
   "appearanceDone": "Done",
   "profileConsents": "Consents",
   "profileNoConsents": "No consent is recorded yet.",
+  "profileDeleteRequest": "Ask to delete my account",
+  "profileDeleteTitle": "Delete account",
+  "profileDeleteReason": "Why do you want to leave? (optional)",
+  "profileDeleteCancel": "Cancel",
+  "profileDeleteSend": "Send request",
+  "profileDeleteSent": "Your request has gone to your centre. Nothing is deleted automatically.",
   "profileSignOut": "Sign out",
   "profileSignOutNote": "This signs you out on this phone. Your account stays at your centre.",
 
