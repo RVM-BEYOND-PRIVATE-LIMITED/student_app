@@ -4,6 +4,14 @@ Additive changes stay in v1: new paths, new optional fields, new enum values the
 tolerates. A breaking change is never made in place: it gets a new path and a raised minimum
 app version, and the old path keeps working until that version is enforced.
 
+## 0.25.0 (15 Nov 2026)
+
+The full Student API surface, copied unchanged from Scheduler_Backend at commit 12e8df2:
+105 live operations across Stage 1A, Stage 3 and Stage 4, including joining, fees, payments,
+receipts, attendance, complaints, community, visitor features, placement proof, referral,
+learning, recorded videos and quizzes. This is the contract the generated Dart client is built
+from. Later backend changes arrive as a new publish with a version bump and its source commit.
+
 ## 0.6.0 (15 Nov 2026)
 
 The student's theme, from Scheduler_Backend #450 (commit 0cccfc7). Adds `GET` and `PUT

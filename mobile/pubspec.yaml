@@ -64,6 +64,10 @@ dependencies:
     path: packages/core_bloc
   core_ui:
     path: packages/core_ui
+  # The Dart client generated from packages/openapi/openapi.yaml (student_app
+  # #1 item 6). Regenerate with tool/generate_student_api.sh.
+  student_api:
+    path: packages/student_api
 
 dev_dependencies:
   flutter_test:

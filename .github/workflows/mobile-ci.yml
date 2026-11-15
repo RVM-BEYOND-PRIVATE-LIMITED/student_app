@@ -88,6 +88,12 @@ jobs:
             exit 1
           fi
 
+      # The Dart client is generated from the published contract; this fails
+      # when the checked-in package and the contract drift apart (student_app
+      # #1, item 6).
+      - name: Generated client drift
+        run: bash tool/generate_student_api.sh --check
+
       - name: Analyze
         run: flutter analyze
 
