@@ -18,6 +18,7 @@ import '../features/onboarding/consent_screen.dart';
 import '../features/join/join_screen.dart';
 import '../features/modules/core_modules_screens.dart';
 import '../features/modules/other_modules_screens.dart';
+import '../features/security/device_refused_screen.dart';
 import '../features/splash/splash_screen.dart';
 import '../features/startup/bloc/startup_bloc.dart';
 import '../features/update_required/update_required_screen.dart';
@@ -44,6 +45,7 @@ abstract final class Routes {
   static const visitor = '/visitor';
   static const placement = '/placement';
   static const learning = '/learning';
+  static const deviceRefused = '/device-refused';
   static const campus = '/jobs/campus';
   static const sessionError = '/session-error';
   static const devMenu = '/dev';
@@ -215,6 +217,7 @@ GoRouter createRouter({
       GoRoute(path: Routes.visitor, builder: (context, state) => const VisitorScreen()),
       GoRoute(path: Routes.placement, builder: (context, state) => const PlacementScreen()),
       GoRoute(path: Routes.learning, builder: (context, state) => const LearningScreen()),
+      GoRoute(path: Routes.deviceRefused, builder: (context, state) => DeviceRefusedScreen(reason: state.extra is String ? state.extra as String : null)),
       GoRoute(
         path: Routes.campus,
         builder: (context, state) {

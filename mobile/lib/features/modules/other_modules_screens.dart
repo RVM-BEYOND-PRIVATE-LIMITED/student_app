@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/student_api.dart';
+import '../../core/security/secure_screen.dart';
 import '../../injection.dart';
 import '../../l10n/l10n.dart';
 import '../../l10n/tr.dart';
@@ -667,7 +668,8 @@ class _PlacementScreenState extends State<PlacementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return SecureScreen(
+      child: Scaffold(
       appBar: AppBar(title: Text(tr(context, 'Placement and referral', 'प्लेसमेंट और रेफ़रल'))),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _sendProof,
@@ -730,6 +732,7 @@ class _PlacementScreenState extends State<PlacementScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 }

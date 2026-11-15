@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/models.dart';
 import '../../core/api/student_api.dart';
+import '../../core/security/secure_screen.dart';
 import '../../injection.dart';
 import '../../l10n/l10n.dart';
 import '../../l10n/tr.dart';
@@ -234,7 +235,8 @@ class _JoinScreenState extends State<JoinScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return SecureScreen(
+      child: Scaffold(
       appBar: AppBar(title: Text(tr(context, 'Join RVM', 'RVM से जुड़ें'))),
       body: FutureBuilder<(List<JoiningCourse>, Undertaking, Registration?, List<Branch>, List<BatchOption>)>(
         future: _future,
@@ -401,6 +403,7 @@ class _JoinScreenState extends State<JoinScreen> {
           );
         },
       ),
+    ),
     );
   }
 
