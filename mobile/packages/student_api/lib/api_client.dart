@@ -349,6 +349,8 @@ class ApiClient {
           return LanguageChoice.fromJson(value);
         case 'LectureWatched':
           return LectureWatched.fromJson(value);
+        case 'LinkAutomaticallyRequest':
+          return LinkAutomaticallyRequest.fromJson(value);
         case 'LinkRequest':
           return LinkRequest.fromJson(value);
         case 'LinkResult':

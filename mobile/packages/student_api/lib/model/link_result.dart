@@ -14,30 +14,47 @@ class LinkResult {
   /// Returns a new [LinkResult] instance.
   LinkResult({
     required this.state,
+    this.admissionNumberRequired,
     required this.account,
   });
 
   LinkResultStateEnum state;
+
+  /// Only with needs_centre from link/auto, while the centre asks for the admission number (#211): send it in the body and try again.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  bool? admissionNumberRequired;
 
   Me account;
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is LinkResult &&
     other.state == state &&
+    other.admissionNumberRequired == admissionNumberRequired &&
     other.account == account;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
     (state.hashCode) +
+    (admissionNumberRequired == null ? 0 : admissionNumberRequired!.hashCode) +
     (account.hashCode);
 
   @override
-  String toString() => 'LinkResult[state=$state, account=$account]';
+  String toString() => 'LinkResult[state=$state, admissionNumberRequired=$admissionNumberRequired, account=$account]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
       json[r'state'] = this.state;
+    if (this.admissionNumberRequired != null) {
+      json[r'admission_number_required'] = this.admissionNumberRequired;
+    } else {
+      json[r'admission_number_required'] = null;
+    }
       json[r'account'] = this.account;
     return json;
   }
@@ -62,6 +79,7 @@ class LinkResult {
 
       return LinkResult(
         state: LinkResultStateEnum.fromJson(json[r'state'])!,
+        admissionNumberRequired: mapValueOfType<bool>(json, r'admission_number_required'),
         account: Me.fromJson(json[r'account'])!,
       );
     }

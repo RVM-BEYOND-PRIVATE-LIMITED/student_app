@@ -144,7 +144,7 @@ class LinkingApi {
 
   /// \"I have already paid\": find my admission by my phone
   ///
-  /// Uses only the phone the student signed in with. One clear match links the account. No match, or more than one, answers `needs_centre` and says nothing about any admission. 
+  /// Uses only the phone the student signed in with. One clear match links the account. No match, or more than one, answers `needs_centre` and says nothing about any admission. While the centre asks for a second proof (#211, off unless set), one clear match also needs the student's admission number: none sent, or a wrong one, answers `needs_centre` with `admission_number_required: true` (after 3 wrong numbers in 24 hours, `needs_centre` without it: the centre links). Letters and digits only are compared, in any case. The body is optional. 
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -155,12 +155,14 @@ class LinkingApi {
   ///
   /// * [String] xAppVersion:
   ///   The app's version, for example 1.2.0. The web version sends none.
-  Future<Response> linkAutomaticallyWithHttpInfo(String idempotencyKey, { String? xAppVersion, Future<void>? abortTrigger, }) async {
+  ///
+  /// * [LinkAutomaticallyRequest] linkAutomaticallyRequest:
+  Future<Response> linkAutomaticallyWithHttpInfo(String idempotencyKey, { String? xAppVersion, LinkAutomaticallyRequest? linkAutomaticallyRequest, Future<void>? abortTrigger, }) async {
     // ignore: prefer_const_declarations
     final path = r'/v1/me/link/auto';
 
     // ignore: prefer_final_locals
-    Object? postBody;
+    Object? postBody = linkAutomaticallyRequest;
 
     final queryParams = <QueryParam>[];
     final headerParams = <String, String>{};
@@ -171,7 +173,7 @@ class LinkingApi {
       headerParams[r'X-App-Version'] = parameterToString(xAppVersion);
     }
 
-    const contentTypes = <String>[];
+    const contentTypes = <String>['application/json'];
 
 
     return apiClient.invokeAPI(
@@ -188,7 +190,7 @@ class LinkingApi {
 
   /// \"I have already paid\": find my admission by my phone
   ///
-  /// Uses only the phone the student signed in with. One clear match links the account. No match, or more than one, answers `needs_centre` and says nothing about any admission. 
+  /// Uses only the phone the student signed in with. One clear match links the account. No match, or more than one, answers `needs_centre` and says nothing about any admission. While the centre asks for a second proof (#211, off unless set), one clear match also needs the student's admission number: none sent, or a wrong one, answers `needs_centre` with `admission_number_required: true` (after 3 wrong numbers in 24 hours, `needs_centre` without it: the centre links). Letters and digits only are compared, in any case. The body is optional. 
   ///
   /// Parameters:
   ///
@@ -197,8 +199,10 @@ class LinkingApi {
   ///
   /// * [String] xAppVersion:
   ///   The app's version, for example 1.2.0. The web version sends none.
-  Future<LinkResult?> linkAutomatically(String idempotencyKey, { String? xAppVersion, Future<void>? abortTrigger, }) async {
-    final response = await linkAutomaticallyWithHttpInfo(idempotencyKey, xAppVersion: xAppVersion, abortTrigger: abortTrigger,);
+  ///
+  /// * [LinkAutomaticallyRequest] linkAutomaticallyRequest:
+  Future<LinkResult?> linkAutomatically(String idempotencyKey, { String? xAppVersion, LinkAutomaticallyRequest? linkAutomaticallyRequest, Future<void>? abortTrigger, }) async {
+    final response = await linkAutomaticallyWithHttpInfo(idempotencyKey, xAppVersion: xAppVersion, linkAutomaticallyRequest: linkAutomaticallyRequest, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
