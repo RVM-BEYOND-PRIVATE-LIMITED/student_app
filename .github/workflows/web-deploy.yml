@@ -1,0 +1,128 @@
+name: web-deploy
+
+# The student web version on its own host (student_app #20 item 11), on every push to main that
+# touches it, or by hand. It does NOTHING until Prakash has:
+#   - pointed the host's DNS A record at the server (proposed app.rvmcad.org; never student.rvmcad.org,
+#     the old portal),
+#   - set the repository VARIABLE STUDENT_WEB_HOST to that host name,
+#   - added the SECRETS SERVER_HOST, SERVER_USER and SERVER_SSH_KEY_BASE64 (the same server and key
+#     the Scheduler frontend deploys with).
+# Until then the job ends with a notice and no error.
+#
+# On the server it follows the Scheduler deploy's pattern for the Student API host: the static
+# files into /var/www/student-web; an HTTP-only site until certbot has a certificate; then the
+# HTTPS site. `nginx -t` runs before every reload, and a failing test removes only this site, so a
+# bad block can never stop the Scheduler or any other site. Prints no secret.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'packages/design-tokens/**'
+      - '.github/workflows/web-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Configured?
+        id: cfg
+        env:
+          HOST_NAME: ${{ vars.STUDENT_WEB_HOST }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_KEY: ${{ secrets.SERVER_SSH_KEY_BASE64 }}
+        run: |
+          if [ -z "$HOST_NAME" ] || [ -z "$SERVER_HOST" ] || [ -z "$SERVER_USER" ] || [ -z "$SERVER_KEY" ]; then
+            echo "::notice::The student web host is not configured (variable STUDENT_WEB_HOST; secrets SERVER_HOST, SERVER_USER, SERVER_SSH_KEY_BASE64). Nothing deployed."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          elif ! printf '%s' "$HOST_NAME" | grep -Eq '^[a-z0-9.-]+\.[a-z]{2,}$' || [ "$HOST_NAME" = "student.rvmcad.org" ]; then
+            echo "::error::STUDENT_WEB_HOST is not a usable host name (student.rvmcad.org is the old portal's and is refused)."
+            exit 1
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.go == 'true'
+
+      - name: Build the files
+        if: steps.cfg.outputs.go == 'true'
+        run: |
+          bash apps/web/deploy/build.sh dist
+          cp apps/web/deploy/nginx/*.template dist/
+
+      - name: SSH
+        if: steps.cfg.outputs.go == 'true'
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_KEY: ${{ secrets.SERVER_SSH_KEY_BASE64 }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s' "$SERVER_KEY" | base64 -d > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Upload
+        if: steps.cfg.outputs.go == 'true'
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          rsync -az --delete -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
+            dist/ "$SERVER_USER@$SERVER_HOST:student-web-release/"
+
+      - name: Install the site
+        if: steps.cfg.outputs.go == 'true'
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          HOST_NAME: ${{ vars.STUDENT_WEB_HOST }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$SERVER_USER@$SERVER_HOST" "HOST_NAME='$HOST_NAME' bash -s" << 'ENDSSH'
+          set -u
+          REL=~/student-web-release
+          sudo mkdir -p /var/www/student-web /var/www/student-web-acme
+          sudo rsync -a --delete --exclude '*.template' "$REL/" /var/www/student-web/
+          echo "  files: $(ls /var/www/student-web | wc -l)"
+          site=/etc/nginx/sites-available/student-web
+          install_site() {
+            sed "s/__HOST__/${HOST_NAME}/g" "$REL/$1" | sudo tee "$site" > /dev/null
+            sudo ln -sf "$site" /etc/nginx/sites-enabled/student-web
+            if sudo nginx -t 2>/dev/null; then
+              sudo systemctl reload nginx
+              return 0
+            fi
+            echo "::warning::nginx -t failed with the student web site; it is removed again and nothing else changed."
+            sudo rm -f /etc/nginx/sites-enabled/student-web
+            sudo nginx -t 2>/dev/null && sudo systemctl reload nginx
+            return 1
+          }
+          if ! sudo test -f "/etc/letsencrypt/live/${HOST_NAME}/fullchain.pem"; then
+            install_site student-web-http.conf.template || exit 0
+            sudo certbot certonly --webroot -w /var/www/student-web-acme -d "$HOST_NAME" --cert-name "$HOST_NAME" \
+              --non-interactive --agree-tos --deploy-hook "systemctl reload nginx" \
+              || echo "::warning::certbot could not issue a certificate for ${HOST_NAME} (does its DNS A record point at this server yet?). The site stays HTTP-only until a later deploy."
+          fi
+          if sudo test -f "/etc/letsencrypt/live/${HOST_NAME}/fullchain.pem"; then
+            install_site student-web.conf.template && echo "  ${HOST_NAME}: HTTPS"
+          fi
+          ENDSSH
+
+      - name: Check
+        if: steps.cfg.outputs.go == 'true'
+        env:
+          HOST_NAME: ${{ vars.STUDENT_WEB_HOST }}
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "https://$HOST_NAME/" || true)
+          echo "https://$HOST_NAME/ -> ${code:-000}"
+          [ "$code" = "200" ] || echo "::warning::The student web host does not answer 200 over HTTPS yet (DNS or certificate)."
