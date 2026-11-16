@@ -8,3 +8,7 @@ build/
 .env.local
 coverage/
 testcontainers-ryuk*/
+
+# The rendered contract page (student_app #16): built in CI and attached to each release.
+packages/openapi/student-api.html
+student-api.html
