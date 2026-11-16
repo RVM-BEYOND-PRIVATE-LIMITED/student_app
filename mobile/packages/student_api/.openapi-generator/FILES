@@ -96,6 +96,7 @@ doc/JoiningApi.md
 doc/LanguageChoice.md
 doc/LearningApi.md
 doc/LectureWatched.md
+doc/LinkAutomaticallyRequest.md
 doc/LinkRequest.md
 doc/LinkResult.md
 doc/LinkingApi.md
@@ -312,6 +313,7 @@ lib/model/jobs_header_logos_inner.dart
 lib/model/jobs_reason.dart
 lib/model/language_choice.dart
 lib/model/lecture_watched.dart
+lib/model/link_automatically_request.dart
 lib/model/link_request.dart
 lib/model/link_result.dart
 lib/model/list_batches200_response.dart
@@ -505,6 +507,7 @@ test/joining_api_test.dart
 test/language_choice_test.dart
 test/learning_api_test.dart
 test/lecture_watched_test.dart
+test/link_automatically_request_test.dart
 test/link_request_test.dart
 test/link_result_test.dart
 test/linking_api_test.dart
