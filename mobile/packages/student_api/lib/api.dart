@@ -129,6 +129,7 @@ part 'model/jobs_header_logos_inner.dart';
 part 'model/jobs_reason.dart';
 part 'model/language_choice.dart';
 part 'model/lecture_watched.dart';
+part 'model/link_automatically_request.dart';
 part 'model/link_request.dart';
 part 'model/link_result.dart';
 part 'model/list_batches200_response.dart';

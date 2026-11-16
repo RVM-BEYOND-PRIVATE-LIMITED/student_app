@@ -4,6 +4,19 @@ Additive changes stay in v1: new paths, new optional fields, new enum values the
 tolerates. A breaking change is never made in place: it gets a new path and a raised minimum
 app version, and the old path keeps working until that version is enforced.
 
+## 0.28.0 (16 Nov 2026)
+
+Copied unchanged from Scheduler_Backend at commit e34daa9. Two additive changes, both off until the centre sets them:
+
+- 0.27.0: posting and commenting in the community may answer 403 `COMMUNITY_MUTED` with `details.until`, while a member
+  is muted after repeated upheld reports (Scheduler_Backend #296). No new path or field.
+- 0.28.0: `POST /v1/me/link/auto` takes an optional body `{admission_number}` and may answer the state
+  `needs_admission_number`, while the centre asks for the admission number as a second proof (Scheduler_Backend #211).
+  The app maps an unknown state to `needs_centre` (Ask your centre), so it keeps working; asking for the number on
+  the "I have already paid" screen is the app's follow-up.
+
+The generated Dart client is regenerated; no path is added or removed.
+
 ## 0.26.0 (16 Nov 2026)
 
 Copied unchanged from Scheduler_Backend at commit 9ee0905. Adds `GET /v1/me/registrations/{id}/undertaking`: the

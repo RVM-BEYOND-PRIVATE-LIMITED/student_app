@@ -120,6 +120,7 @@ enum LinkResultStateEnum {
   linked._(r'linked'),
   needsCentre._(r'needs_centre'),
   requested._(r'requested'),
+  needsAdmissionNumber._(r'needs_admission_number'),
   ;
 
   /// Instantiate a new enum with the provided value.
@@ -181,6 +182,7 @@ class LinkResultStateEnumTypeTransformer {
         case r'linked': return LinkResultStateEnum.linked;
         case r'needs_centre': return LinkResultStateEnum.needsCentre;
         case r'requested': return LinkResultStateEnum.requested;
+        case r'needs_admission_number': return LinkResultStateEnum.needsAdmissionNumber;
         default:
           if (!allowNull) {
             throw ArgumentError('Unknown enum value to decode: $data');

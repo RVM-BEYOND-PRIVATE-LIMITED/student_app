@@ -1,13 +1,19 @@
 openapi: 3.1.0
 info:
   title: RVM Student API
-  version: 0.26.0
+  version: 0.28.0
   # Copied unchanged from Scheduler_Backend docs/api/student-api.openapi.yaml at this commit.
-  x-source-commit: 9ee090583a58a14e0c0637b561538eb7ddf9cfce
+  x-source-commit: e34daa93681350b0792a99057134f0c1d0d6a237
   summary: What the RVM student app and its web version call.
   description: |
     The `/v1` surface of Stage 1A: sign-in, linking a student to their admission, consents and
     the age tick, Jobs access, the Campus hand-off and the prompts that come back from Campus.
+
+    Changes in 0.28.0: `POST /v1/me/link/auto` takes an optional body `{admission_number}` and may answer the state
+    `needs_admission_number`, while the centre asks for the admission number as a second proof (#211; off unless set).
+
+    Changes in 0.27.0: posting and commenting in the community answer 403 `COMMUNITY_MUTED` with `details.until` while
+    the member is muted after repeated upheld reports (#296; off unless the centre sets it). No new path or field.
 
     Changes in 0.25.0: `POST /v1/public/enquiries` takes `consent_version`, the version of the consent line's text; the
     CRM keeps it with the tick on the lead (#276). Picked up by the website's form and the student app.
@@ -495,10 +501,23 @@ paths:
       description: |
         Uses only the phone the student signed in with. One clear match links the account. No
         match, or more than one, answers `needs_centre` and says nothing about any admission.
+        While the centre asks for a second proof (#211, off unless set), one clear match also needs
+        the student's admission number: none sent, or a wrong one, answers `needs_admission_number`
+        (after 3 wrong numbers in 24 hours, `needs_centre`). Letters and digits only are compared,
+        in any case. The body is optional.
       x-status: live
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/AppVersion'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                admission_number: { type: string, maxLength: 40, description: 'As printed on the receipt, e.g. RVM-2026-123.' }
       responses:
         '200':
           description: The result.
@@ -1979,7 +1998,8 @@ paths:
       description: |
         Text up to 2,000 characters, with an optional poll of 2 to 6 options. Phone numbers, runs
         of 10 or more digits, UPI IDs and requests for money are refused with 422
-        `CONTENT_BLOCKED` and nothing is stored. 10 posts a day.
+        `CONTENT_BLOCKED` and nothing is stored. 10 posts a day. A member muted after repeated upheld
+        reports (#296, off unless the centre sets it) gets 403 `COMMUNITY_MUTED` with `details.until`.
       x-status: live
       parameters:
         - $ref: '#/components/parameters/IdPath'
@@ -2043,7 +2063,8 @@ paths:
       operationId: createCommunityComment
       summary: Comment on a post
       description: |
-        Up to 1,000 characters, 5 a minute. The post's author gets a notice.
+        Up to 1,000 characters, 5 a minute. The post's author gets a notice. A muted member (#296) gets
+        403 `COMMUNITY_MUTED` with `details.until`.
       x-status: live
       parameters:
         - $ref: '#/components/parameters/IdPath'
@@ -3788,7 +3809,7 @@ components:
             NOT_FOUND, DEVICE_CHANGE_NEEDS_CENTRE, PHONE_INVALID, RESEND_USED, RESEND_TOO_SOON,
             OTP_UNAVAILABLE, LINK_REQUEST_OPEN, ALREADY_ANSWERED, ALREADY_ADMITTED, REGISTRATION_OPEN,
             REGISTRATION_SUBMITTED, REGISTRATION_INCOMPLETE, VIDEO_NOT_STARTED, VIDEO_TOO_SOON, BATCH_FULL,
-            ALREADY_CHOSEN, FEE_HOLD, CORRECTION_TOO_OLD, NOT_A_SESSION, CORRECTION_OPEN,
+            ALREADY_CHOSEN, FEE_HOLD, CORRECTION_TOO_OLD, NOT_A_SESSION, CORRECTION_OPEN, COMMUNITY_MUTED,
             CONSENT_TEXT_OUTDATED, UPGRADE_REQUIRED, RATE_LIMITED, MODULE_OFF, MAINTENANCE,
             NOT_READY, INTERNAL.
           pattern: '^[A-Z][A-Z0-9_]+$'
@@ -4015,7 +4036,7 @@ components:
       required: [state, account]
       additionalProperties: false
       properties:
-        state: { type: string, enum: [linked, needs_centre, requested] }
+        state: { type: string, enum: [linked, needs_centre, requested, needs_admission_number] }
         account: { $ref: '#/components/schemas/Me' }
 
     Admission:

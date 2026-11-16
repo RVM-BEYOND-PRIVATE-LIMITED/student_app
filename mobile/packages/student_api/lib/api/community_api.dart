@@ -89,7 +89,7 @@ class CommunityApi {
 
   /// Comment on a post
   ///
-  /// Up to 1,000 characters, 5 a minute. The post's author gets a notice. 
+  /// Up to 1,000 characters, 5 a minute. The post's author gets a notice. A muted member (#296) gets 403 `COMMUNITY_MUTED` with `details.until`. 
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -138,7 +138,7 @@ class CommunityApi {
 
   /// Comment on a post
   ///
-  /// Up to 1,000 characters, 5 a minute. The post's author gets a notice. 
+  /// Up to 1,000 characters, 5 a minute. The post's author gets a notice. A muted member (#296) gets 403 `COMMUNITY_MUTED` with `details.until`. 
   ///
   /// Parameters:
   ///
@@ -168,7 +168,7 @@ class CommunityApi {
 
   /// Post in a group
   ///
-  /// Text up to 2,000 characters, with an optional poll of 2 to 6 options. Phone numbers, runs of 10 or more digits, UPI IDs and requests for money are refused with 422 `CONTENT_BLOCKED` and nothing is stored. 10 posts a day. 
+  /// Text up to 2,000 characters, with an optional poll of 2 to 6 options. Phone numbers, runs of 10 or more digits, UPI IDs and requests for money are refused with 422 `CONTENT_BLOCKED` and nothing is stored. 10 posts a day. A member muted after repeated upheld reports (#296, off unless the centre sets it) gets 403 `COMMUNITY_MUTED` with `details.until`. 
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -217,7 +217,7 @@ class CommunityApi {
 
   /// Post in a group
   ///
-  /// Text up to 2,000 characters, with an optional poll of 2 to 6 options. Phone numbers, runs of 10 or more digits, UPI IDs and requests for money are refused with 422 `CONTENT_BLOCKED` and nothing is stored. 10 posts a day. 
+  /// Text up to 2,000 characters, with an optional poll of 2 to 6 options. Phone numbers, runs of 10 or more digits, UPI IDs and requests for money are refused with 422 `CONTENT_BLOCKED` and nothing is stored. 10 posts a day. A member muted after repeated upheld reports (#296, off unless the centre sets it) gets 403 `COMMUNITY_MUTED` with `details.until`. 
   ///
   /// Parameters:
   ///
