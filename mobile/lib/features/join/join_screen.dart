@@ -1,7 +1,12 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:core_network/core_network.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/models.dart';
@@ -199,6 +204,34 @@ class _JoinScreenState extends State<JoinScreen> {
     try {
       final json = await getIt<StudentApi>().postJson('/v1/me/registrations/${registration.id}/submit', {});
       setState(() => _applyRegistration(Registration.fromJson(json)));
+    } catch (error) {
+      _error(error);
+    }
+  }
+
+  /// The signed undertaking as the server keeps it (contract 0.26.0, #256):
+  /// a PDF in base64, saved to a temporary file and handed to the share sheet,
+  /// like a receipt.
+  Future<void> _shareUndertaking() async {
+    final registration = _registration;
+    if (registration == null) return;
+    final subject = tr(context, 'RVM undertaking', 'RVM अंडरटेकिंग');
+    try {
+      final json = await getIt<StudentApi>().getJson(
+        '/v1/me/registrations/${registration.id}/undertaking',
+      );
+      final base64 = '${json['pdf_base64'] ?? ''}';
+      if (base64.isEmpty) return;
+      final dir = await getTemporaryDirectory();
+      final name = '${json['filename'] ?? 'undertaking.pdf'}';
+      final file = File('${dir.path}/$name');
+      await file.writeAsBytes(base64Decode(base64), flush: true);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'application/pdf')],
+          subject: subject,
+        ),
+      );
     } catch (error) {
       _error(error);
     }
@@ -410,6 +443,12 @@ class _JoinScreenState extends State<JoinScreen> {
                   child: Text(tr(context, 'Submit', 'जमा करें')),
                 ),
                 if (registration.submitted) ...[
+                  const SizedBox(height: RvmSpacing.sm),
+                  OutlinedButton.icon(
+                    onPressed: _shareUndertaking,
+                    icon: const Icon(Icons.picture_as_pdf_rounded),
+                    label: Text(tr(context, 'My signed undertaking', 'मेरी हस्ताक्षरित अंडरटेकिंग')),
+                  ),
                   const SizedBox(height: RvmSpacing.md),
                   Text('${tr(context, 'Total', 'कुल')}: ${money(registration.totalPaise)}',
                       style: Theme.of(context).textTheme.titleMedium),

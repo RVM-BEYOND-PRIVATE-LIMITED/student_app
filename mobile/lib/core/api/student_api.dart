@@ -109,6 +109,7 @@ class StudentApi {
     '/v1/me/registrations/{id}/id-document',
     '/v1/me/registrations/{id}/submit',
     '/v1/me/registrations/{id}/terms',
+    '/v1/me/registrations/{id}/undertaking',
     '/v1/me/registrations/{id}/video-complete',
     '/v1/me/registrations/{id}/video-start',
     '/v1/me/sessions',
