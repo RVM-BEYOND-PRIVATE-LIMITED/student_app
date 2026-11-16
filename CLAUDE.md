@@ -5,8 +5,8 @@ not started) and the published Student API contract (`packages/openapi`). **It h
 backend.** The Student API is built in the backend repository, and backend rules live there.
 
 ## Hard rules (never break)
-1. Do not build, run, deploy or copy from `archive/m0-scaffold/`. It is a replaced design, kept
-   for reference. Never apply its migration to any database.
+1. Do not bring back the 28 October backend scaffold (removed 16 Nov 2026, student_app #17) or
+   copy from it out of the history. It is a replaced design; never apply its migration to any database.
 2. Never connect to any RVM database from this repository. Nothing here needs one.
 3. The contract in `packages/openapi/openapi.yaml` is a copy of the backend's. Never edit it to
    lead the backend: a change arrives as a publish from the backend repository, with a version

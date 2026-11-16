@@ -1,5 +1,6 @@
 # apps/
 
-The student web version will live in `apps/web` (student_app #7). Nothing is here yet.
+The student web version is `apps/web` (student_app #7).
 
-The Fastify scaffold that used to be `apps/api` is in `archive/m0-scaffold/` and is not used.
+The Fastify scaffold that used to be `apps/api` was removed on 16 Nov 2026 (student_app #17); the Student API is
+built in the Scheduler backend.
