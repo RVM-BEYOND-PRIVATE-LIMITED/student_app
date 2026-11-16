@@ -41,13 +41,13 @@ class UpdateRequiredScreen extends StatelessWidget {
                           height: 64,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: StudentColors.accentSoft,
+                            color: context.palette.accentSoft,
                             borderRadius: BorderRadius.circular(RvmRadii.lg),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.system_update_rounded,
                             size: 30,
-                            color: StudentColors.accentDark,
+                            color: context.palette.accentDark,
                           ),
                         ),
                         const SizedBox(height: RvmSpacing.md + 4),
@@ -64,7 +64,7 @@ class UpdateRequiredScreen extends StatelessWidget {
                           ),
                           textAlign: TextAlign.center,
                           style: text.bodyLarge?.copyWith(
-                            color: StudentColors.fg2,
+                            color: context.palette.fg2,
                           ),
                         ),
                         const SizedBox(height: RvmSpacing.lg),
@@ -115,17 +115,17 @@ class _HowToUpdate extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(RvmSpacing.md),
       decoration: BoxDecoration(
-        color: StudentColors.surface,
+        color: context.palette.surface,
         borderRadius: BorderRadius.circular(RvmRadii.md),
-        border: Border.all(color: StudentColors.border),
+        border: Border.all(color: context.palette.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
+          Icon(
             Icons.storefront_outlined,
             size: 22,
-            color: StudentColors.navy,
+            color: context.palette.navy,
           ),
           const SizedBox(width: RvmSpacing.sm + 4),
           Expanded(
@@ -136,7 +136,7 @@ class _HowToUpdate extends StatelessWidget {
                 const SizedBox(height: RvmSpacing.xs),
                 Text(
                   body,
-                  style: text.bodyMedium?.copyWith(color: StudentColors.fg2),
+                  style: text.bodyMedium?.copyWith(color: context.palette.fg2),
                 ),
               ],
             ),

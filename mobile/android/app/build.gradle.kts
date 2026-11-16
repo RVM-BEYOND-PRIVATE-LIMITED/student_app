@@ -95,3 +95,11 @@ android {
 flutter {
     source = "../.."
 }
+
+// Firebase Crashlytics activates only when the Firebase config is
+// present (android/app/google-services.json, Android app package
+// com.rvm.rvmstudent).
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+}

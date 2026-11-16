@@ -5,17 +5,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/api/models.dart';
 import '../../core/app_info.dart';
 import '../../core/crash/crash_log.dart';
 import '../../core/env/student_env.dart';
 import '../../core/security/device_hints.dart';
 import '../../core/session/student_session.dart';
+import '../../injection.dart';
 import '../../l10n/l10n.dart';
 import '../../router/app_router.dart';
 import '../../theme/student_tokens.dart';
 import '../../widgets/data_text.dart';
 import '../../widgets/states.dart';
 import '../language/bloc/language_bloc.dart';
+import '../theme/theme_controller.dart';
 
 /// What the Developer menu reads from the phone.
 class DevMenuInfo extends Equatable {
@@ -180,6 +183,36 @@ class _DevMenuView extends StatelessWidget {
                 ],
               ),
               _Section(
+                title: l10n.devSectionTheme,
+                children: [
+                  ListenableBuilder(
+                    listenable: getIt<ThemeController>(),
+                    builder: (context, _) {
+                      final theme = getIt<ThemeController>();
+                      return Column(
+                        children: [
+                          SwitchListTile(
+                            secondary: const Icon(Icons.dark_mode_outlined),
+                            title: Text(l10n.devDarkPreview),
+                            subtitle: Text(l10n.devDarkPreviewNote),
+                            value: theme.mode == ThemeMode.dark,
+                            onChanged: (on) => theme.debugPreview(
+                              on ? ThemeChoice.dark : null,
+                            ),
+                          ),
+                          if (theme.debugChoice != null)
+                            ListTile(
+                              leading: const Icon(Icons.restart_alt_rounded),
+                              title: Text(l10n.devServerTheme),
+                              onTap: () => theme.debugPreview(null),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+              _Section(
                 title: l10n.devSectionDiagnostics,
                 children: [
                   ListTile(
@@ -275,7 +308,7 @@ class _Section extends StatelessWidget {
             child: Text(
               title,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: StudentColors.accentDark,
+                color: context.palette.accentDark,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -322,11 +355,11 @@ class _Note extends StatelessWidget {
               text,
               style: Theme.of(
                 context,
-              ).textTheme.bodySmall?.copyWith(color: StudentColors.fg2),
+              ).textTheme.bodySmall?.copyWith(color: context.palette.fg2),
             ),
             if (data != null) ...[
               const SizedBox(height: 2),
-              DataText(data!, size: 12, color: StudentColors.fg2),
+              DataText(data!, size: 12, color: context.palette.fg2),
             ],
           ],
         ),
@@ -374,7 +407,7 @@ class _InfoRow extends StatelessWidget {
             ],
             if (data != null) ...[
               const SizedBox(height: 2),
-              DataText(data!, size: 12, color: StudentColors.fg2),
+              DataText(data!, size: 12, color: context.palette.fg2),
             ],
           ],
         ),

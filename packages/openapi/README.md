@@ -4,7 +4,7 @@
 against. It is a **copy**: the Student API is built in the backend repository, and the backend's
 contract is the source of truth. This copy never leads.
 
-**Status: 0.1.0 is published** (14 Nov 2026): the Stage 1A `/v1` surface. Each route says
+**Status: 0.26.0 is published** (16 Nov 2026): the whole student surface (Stage 1A, Stage 3 and Stage 4) is live in the Scheduler backend; the changelog lists each publish. Each route says
 `x-status: live` (served now) or `planned` (contract only, 404 until its backend issue ships).
 
 ## Publishing a new version
@@ -19,7 +19,27 @@ Each publish is one pull request in this repository that:
 
 `contract-ci` checks every pull request that touches this folder: the file lints, a change
 comes with a higher version, every path is under `/v1`, and a published contract names its
-source commit.
+source commit. It also fails on a **breaking change** against the last released contract
+(`tools/breaking-check.sh`, oasdiff on the bundled JSON; student_app #15): a breaking change gets a
+new path and a raised minimum app version instead. And it renders the contract as one page
+(`student-api.html`, a download on the run's summary; student_app #16).
+
+## Releases: pinning a version
+
+When a new `info.version` reaches `main`, `contract-release` makes a GitHub release
+`contract-v<version>` (student_app #14) with three files: `openapi.yaml` as published, `openapi.json`
+(bundled) and `student-api.html` (the rendered page). Its notes are the version's section of
+`CHANGELOG.md`. A version is released once; pushing the same version again makes no release.
+
+To build against one version:
+
+```bash
+gh release download contract-v0.26.0 --pattern openapi.yaml --dir /tmp/contract   # the pinned file
+gh release download contract-v0.26.0 --pattern student-api.html                    # the page to read
+```
+
+Locally: `npm run docs` (in this folder) writes `student-api.html`; `npm run breaking` runs the
+breaking-change check (needs Docker and `gh`).
 
 ## Rules for the contract
 

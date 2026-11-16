@@ -7,10 +7,12 @@ import 'core/crash/crash_log.dart';
 import 'core/env/student_env.dart';
 import 'core/security/device_hints.dart';
 import 'core/session/student_session.dart';
+import 'features/auth/bloc/auth_bloc.dart';
 import 'features/connectivity/connectivity_bloc.dart';
 import 'features/connectivity/offline_banner.dart';
 import 'features/language/bloc/language_bloc.dart';
 import 'features/startup/bloc/startup_bloc.dart';
+import 'features/theme/theme_controller.dart';
 import 'injection.dart';
 import 'l10n/l10n.dart';
 import 'router/app_router.dart';
@@ -28,9 +30,12 @@ class StudentApp extends StatefulWidget {
 class _StudentAppState extends State<StudentApp> {
   final StartupBloc _startup = getIt<StartupBloc>();
   final LanguageBloc _language = getIt<LanguageBloc>();
+  final AuthBloc _auth = getIt<AuthBloc>();
+  final ThemeController _theme = getIt<ThemeController>();
   late final GoRouter _router = createRouter(
     startup: _startup,
     language: _language,
+    auth: _auth,
     isDev: getIt<StudentEnv>().isDev,
   );
 
@@ -39,6 +44,9 @@ class _StudentAppState extends State<StudentApp> {
   @override
   void initState() {
     super.initState();
+    // Restore the session and read the account (student_app #2). It runs
+    // beside the launch checks: neither waits on the other.
+    _auth.add(const AuthStarted());
     // In the background the offline banner's re-checks stop; back in the
     // foreground it checks again at once and starts its back-off afresh.
     // Hidden always comes before paused; both are sent, and the second one
@@ -47,7 +55,12 @@ class _StudentAppState extends State<StudentApp> {
     _lifecycle = AppLifecycleListener(
       onHide: () => connectivity.add(const ConnectivityPaused()),
       onPause: () => connectivity.add(const ConnectivityPaused()),
-      onResume: () => connectivity.add(const ConnectivityResumed()),
+      onResume: () {
+        connectivity.add(const ConnectivityResumed());
+        // A theme the server did not take is retried here, and the server's
+        // copy is read again in case the switch changed (student_app #59).
+        if (_auth.state.signedIn) _theme.refreshFromServer();
+      },
     );
   }
 
@@ -72,6 +85,7 @@ class _StudentAppState extends State<StudentApp> {
         providers: [
           BlocProvider.value(value: _startup),
           BlocProvider.value(value: _language),
+          BlocProvider.value(value: _auth),
           BlocProvider.value(value: getIt<ConnectivityBloc>()),
         ],
         child: MultiBlocListener(
@@ -84,22 +98,44 @@ class _StudentAppState extends State<StudentApp> {
               listenWhen: (p, c) => p.hasChosen != c.hasChosen,
               listener: (_, _) => _router.refresh(),
             ),
+            BlocListener<AuthBloc, AuthState>(
+              listenWhen: (p, c) =>
+                  p.status != c.status ||
+                  p.account?.onboardingComplete !=
+                      c.account?.onboardingComplete,
+              listener: (context, state) {
+                _router.refresh();
+                if (state.signedIn) {
+                  // Sign-in and a restored session: read the theme.
+                  _theme.refreshFromServer();
+                } else if (state.status == AuthStatus.signedOut) {
+                  _theme.signOut();
+                }
+              },
+            ),
           ],
-          child: BlocBuilder<LanguageBloc, LanguageState>(
-            buildWhen: (p, c) => p.language != c.language,
-            builder: (context, state) => MaterialApp.router(
-              onGenerateTitle: (context) => context.l10n.appTitle,
-              debugShowCheckedModeBanner: false,
-              // Light only, as the Team app: every screen is drawn for the
-              // light palette.
-              theme: StudentTheme.forLanguageCode(state.language.name),
-              themeMode: ThemeMode.light,
-              locale: state.language.locale,
-              supportedLocales: AppLocalizations.supportedLocales,
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              routerConfig: _router,
-              builder: (context, child) =>
-                  OfflineBannerHost(child: child ?? const SizedBox.shrink()),
+          child: ListenableBuilder(
+            listenable: _theme,
+            builder: (context, _) => BlocBuilder<LanguageBloc, LanguageState>(
+              buildWhen: (p, c) => p.language != c.language,
+              builder: (context, state) => MaterialApp.router(
+                onGenerateTitle: (context) => context.l10n.appTitle,
+                debugShowCheckedModeBanner: false,
+                // Light is today's look. Dark exists only when the server's
+                // theme switch is open to this student (student_app #57, #59).
+                theme: StudentTheme.forLanguageCode(state.language.name),
+                darkTheme: StudentTheme.dark(
+                  devanagari: state.language.name == 'hi',
+                ),
+                themeMode: _theme.mode,
+                locale: state.language.locale,
+                supportedLocales: AppLocalizations.supportedLocales,
+                localizationsDelegates:
+                    AppLocalizations.localizationsDelegates,
+                routerConfig: _router,
+                builder: (context, child) =>
+                    OfflineBannerHost(child: child ?? const SizedBox.shrink()),
+              ),
             ),
           ),
         ),

@@ -37,9 +37,17 @@ class WelcomeScreen extends StatelessWidget {
                     const SizedBox(height: RvmSpacing.sm + 2),
                     Text(
                       l10n.welcomeBody,
-                      style: text.bodyLarge?.copyWith(color: StudentColors.fg2),
+                      style: text.bodyLarge?.copyWith(color: context.palette.fg2),
                     ),
                     const SizedBox(height: RvmSpacing.lg),
+                    FilledButton(
+                      onPressed: () => context.push(Routes.signIn),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52),
+                      ),
+                      child: Text(l10n.welcomeSignIn),
+                    ),
+                    const SizedBox(height: RvmSpacing.md),
                     OutlinedButton.icon(
                       onPressed: () => context.push(Routes.language),
                       icon: const Icon(Icons.translate_rounded, size: 20),
@@ -74,13 +82,13 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: StudentColors.headerGradient,
+          colors: context.palette.headerGradient,
         ),
-        borderRadius: BorderRadius.vertical(
+        borderRadius: const BorderRadius.vertical(
           bottom: Radius.circular(RvmRadii.xl),
         ),
       ),
@@ -89,8 +97,8 @@ class _Header extends StatelessWidget {
           bottom: Radius.circular(RvmRadii.xl),
         ),
         child: CustomPaint(
-          painter: const GridPaperPainter(
-            color: StudentColors.headerGrid,
+          painter: GridPaperPainter(
+            color: context.palette.headerGrid,
             gap: 24,
           ),
           child: SafeArea(

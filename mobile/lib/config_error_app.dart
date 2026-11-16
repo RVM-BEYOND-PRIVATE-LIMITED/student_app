@@ -48,10 +48,10 @@ class _ConfigErrorScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.build_circle_outlined,
                     size: 44,
-                    color: StudentColors.danger,
+                    color: context.palette.danger,
                   ),
                   const SizedBox(height: RvmSpacing.md),
                   Text(
@@ -63,7 +63,7 @@ class _ConfigErrorScreen extends StatelessWidget {
                   Text(
                     l10n.configErrorBody,
                     textAlign: TextAlign.center,
-                    style: text.bodyMedium?.copyWith(color: StudentColors.fg2),
+                    style: text.bodyMedium?.copyWith(color: context.palette.fg2),
                   ),
                 ],
               ),

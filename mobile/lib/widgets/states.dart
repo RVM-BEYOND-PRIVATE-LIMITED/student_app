@@ -87,10 +87,10 @@ class _ShimmerBoxState extends State<ShimmerBox>
             gradient: LinearGradient(
               begin: Alignment(-1 + t, 0),
               end: Alignment(1 + t, 0),
-              colors: const [
-                StudentColors.surface2,
-                StudentColors.surface,
-                StudentColors.surface2,
+              colors: [
+                context.palette.surface2,
+                context.palette.surface,
+                context.palette.surface2,
               ],
               stops: const [0.25, 0.5, 0.75],
             ),
@@ -110,9 +110,9 @@ class SkeletonCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(RvmSpacing.md - 1),
       decoration: BoxDecoration(
-        color: StudentColors.surface,
+        color: context.palette.surface,
         borderRadius: BorderRadius.circular(RvmRadii.md),
-        border: Border.all(color: StudentColors.border),
+        border: Border.all(color: context.palette.border),
       ),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,10 +217,10 @@ class StudentEmptyState extends StatelessWidget {
                 height: 60,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: StudentColors.surface2,
+                  color: context.palette.surface2,
                   borderRadius: BorderRadius.circular(RvmRadii.lg),
                 ),
-                child: Icon(icon, color: StudentColors.fg3, size: 28),
+                child: Icon(icon, color: context.palette.fg3, size: 28),
               ),
               const SizedBox(height: RvmSpacing.md),
               Text(title, textAlign: TextAlign.center, style: text.titleMedium),
@@ -229,7 +229,7 @@ class StudentEmptyState extends StatelessWidget {
                 Text(
                   message!,
                   textAlign: TextAlign.center,
-                  style: text.bodyMedium?.copyWith(color: StudentColors.fg2),
+                  style: text.bodyMedium?.copyWith(color: context.palette.fg2),
                 ),
               ],
               if (action != null) ...[
@@ -316,6 +316,10 @@ class FailureCopy {
       };
 }
 
+/// The app's own line for a [Failure], never the server's English message.
+String failureLine(Failure failure, AppLocalizations l10n) =>
+    FailureCopy.of(failure, l10n).body;
+
 /// A load that failed (student_app #1, item 7): the real cause, a retry,
 /// and the server's request id when the reply carried one, so the student
 /// can read it out to support.
@@ -344,10 +348,10 @@ class StudentErrorState extends StatelessWidget {
                 height: 56,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: StudentColors.danger.withValues(alpha: 0.10),
+                  color: context.palette.danger.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(RvmRadii.lg - 2),
                 ),
-                child: Icon(copy.icon, color: StudentColors.danger, size: 26),
+                child: Icon(copy.icon, color: context.palette.danger, size: 26),
               ),
               const SizedBox(height: RvmSpacing.md),
               Semantics(
@@ -362,7 +366,7 @@ class StudentErrorState extends StatelessWidget {
               Text(
                 copy.body,
                 textAlign: TextAlign.center,
-                style: text.bodyMedium?.copyWith(color: StudentColors.fg2),
+                style: text.bodyMedium?.copyWith(color: context.palette.fg2),
               ),
               if (requestId != null) ...[
                 const SizedBox(height: RvmSpacing.md),
@@ -400,9 +404,9 @@ class RequestIdBox extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(RvmSpacing.md - 2, 10, 4, 10),
       decoration: BoxDecoration(
-        color: StudentColors.surface2,
+        color: context.palette.surface2,
         borderRadius: BorderRadius.circular(RvmRadii.sm),
-        border: Border.all(color: StudentColors.border),
+        border: Border.all(color: context.palette.border),
       ),
       child: Row(
         children: [
@@ -423,7 +427,7 @@ class RequestIdBox extends StatelessWidget {
           IconButton(
             tooltip: l10n.copyRequestId,
             icon: const Icon(Icons.copy_rounded, size: 20),
-            color: StudentColors.fg2,
+            color: context.palette.fg2,
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: requestId));
               if (!context.mounted) return;

@@ -14,11 +14,11 @@ class OfflineBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme.labelLarge?.copyWith(
-      color: StudentColors.white,
+      color: context.palette.white,
       fontSize: 13.5,
     );
     return Material(
-      color: StudentColors.navy,
+      color: context.palette.navy,
       child: SafeArea(
         bottom: false,
         child: Padding(
@@ -31,10 +31,10 @@ class OfflineBar extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
+                Icon(
                   Icons.wifi_off_rounded,
                   size: 16,
-                  color: StudentColors.warning,
+                  color: context.palette.warning,
                 ),
                 const SizedBox(width: RvmSpacing.sm),
                 Flexible(

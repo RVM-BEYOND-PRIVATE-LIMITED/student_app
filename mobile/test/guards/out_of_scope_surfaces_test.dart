@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rvm_student/core/api/student_api.dart';
 import 'package:rvm_student/core/session/student_session.dart';
 import 'package:rvm_student/core/version/version_gate.dart';
+import 'package:rvm_student/features/auth/bloc/auth_bloc.dart';
 import 'package:rvm_student/features/language/bloc/language_bloc.dart';
 import 'package:rvm_student/features/language/language_store.dart';
 import 'package:rvm_student/features/startup/bloc/startup_bloc.dart';
@@ -56,15 +59,22 @@ void main() {
       deviceDefault: AppLanguage.en,
       saved: AppLanguage.en,
     );
+    final auth = AuthBloc(
+      api: StudentApi(Dio()),
+      session: StudentSession(FakeSecureStore()),
+      appVersion: '0.1.0',
+    );
     final router = createRouter(
       startup: startup,
       language: language,
+      auth: auth,
       isDev: true,
     );
     addTearDown(() async {
       router.dispose();
       await startup.close();
       await language.close();
+      await auth.close();
     });
     paths = routePaths(router.configuration.routes);
   });

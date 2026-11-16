@@ -1,0 +1,73 @@
+// GENERATED FILE — do not edit by hand.
+// Source: packages/design-tokens/student.tokens.json
+// Regenerate: node packages/design-tokens/generate.mjs
+//
+// ARGB integers, because this file is imported by the theme only; the
+// StudentPalette turns them into Colours.
+abstract final class StudentTokenValues {
+  static const light = <String, int>{
+    'accent': 0xFFF97316,
+    'accentDark': 0xFFEA580C,
+    'accentSoft': 0x1FF97316,
+    'accentTint': 0xFFFFF7ED,
+    'bg': 0xFFF8FAFC,
+    'border': 0xFFE2E8F0,
+    'danger': 0xFFE31E24,
+    'dangerSoft': 0x1AE31E24,
+    'fg1': 0xFF1E293B,
+    'fg2': 0xFF475569,
+    'fg3': 0xFF94A3B8,
+    'headerEnd': 0xFF1A2B53,
+    'headerGrid': 0x0FFFFFFF,
+    'headerStart': 0xFF25396B,
+    'info': 0xFF3B82F6,
+    'infoSoft': 0x1A3B82F6,
+    'navy': 0xFF1E305E,
+    'navyDeep': 0xFF152443,
+    'onAccent': 0xFFFFFFFF,
+    'outline': 0xFFCBD5E1,
+    'splashEnd': 0xFF0E1834,
+    'splashMid': 0xFF1A2B53,
+    'splashStart': 0xFF25396B,
+    'success': 0xFF16A34A,
+    'successSoft': 0x1A16A34A,
+    'surface': 0xFFFFFFFF,
+    'surface2': 0xFFF1F5F9,
+    'warning': 0xFFF59E0B,
+    'warningSoft': 0x1AF59E0B,
+    'white': 0xFFFFFFFF,
+  };
+
+  static const dark = <String, int>{
+    'accent': 0xFFF97316,
+    'accentDark': 0xFFFB923C,
+    'accentSoft': 0x33F97316,
+    'accentTint': 0xFF2B1B0D,
+    'bg': 0xFF0E1834,
+    'border': 0xFF2A3B66,
+    'danger': 0xFFF87171,
+    'dangerSoft': 0x26F87171,
+    'fg1': 0xFFF1F5F9,
+    'fg2': 0xFFCBD5E1,
+    'fg3': 0xFF94A3B8,
+    'headerEnd': 0xFF1A2B53,
+    'headerGrid': 0x14FFFFFF,
+    'headerStart': 0xFF25396B,
+    'info': 0xFF60A5FA,
+    'infoSoft': 0x2660A5FA,
+    'navy': 0xFF1E305E,
+    'navyDeep': 0xFF0E1834,
+    'onAccent': 0xFF0E1834,
+    'outline': 0xFF33456F,
+    'splashEnd': 0xFF0E1834,
+    'splashMid': 0xFF1A2B53,
+    'splashStart': 0xFF25396B,
+    'success': 0xFF22C55E,
+    'successSoft': 0x2622C55E,
+    'surface': 0xFF152443,
+    'surface2': 0xFF1A2B53,
+    'warning': 0xFFFBBF24,
+    'warningSoft': 0x26FBBF24,
+    'white': 0xFFFFFFFF,
+  };
+}

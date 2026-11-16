@@ -1,0 +1,51 @@
+name: web-ci
+
+# The student web version in apps/web (student_app #7; CI per student_app #20 item 12).
+#
+# The web version has no build step: these checks keep it honest. Its scripts parse, it calls only
+# paths of the published contract, and the files the deploy serves are all there. It needs no secret.
+on:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'packages/openapi/openapi.yaml'
+      - 'packages/design-tokens/**'
+      - '.github/workflows/web-ci.yml'
+      - '.github/workflows/web-deploy.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Scripts parse
+        run: for f in apps/web/*.js; do node --check "$f"; done
+
+      - name: Calls only the published contract
+        run: node apps/web/tool/check-paths.mjs
+
+      - name: Tool tests
+        run: node --test apps/web/tool/check-paths.test.mjs
+
+      - name: The files the deploy serves
+        run: |
+          for f in apps/web/index.html apps/web/app.js apps/web/styles.css packages/design-tokens/student.tokens.css \
+                   apps/web/deploy/nginx/student-web-http.conf.template apps/web/deploy/nginx/student-web.conf.template; do
+            test -f "$f" || { echo "::error file=$f::missing"; exit 1; }
+          done
+          bash apps/web/deploy/build.sh dist
+          test -f dist/index.html && test -f dist/student.tokens.css
+          ! grep -q '\.\./\.\./packages' dist/index.html
