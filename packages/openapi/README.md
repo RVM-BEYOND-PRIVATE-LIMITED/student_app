@@ -4,7 +4,7 @@
 against. It is a **copy**: the Student API is built in the backend repository, and the backend's
 contract is the source of truth. This copy never leads.
 
-**Status: 0.5.0 is published** (14 Nov 2026): the whole Stage 1A `/v1` surface is live (Scheduler_Backend #158 to #162). Each route says
+**Status: 0.26.0 is published** (16 Nov 2026): the whole student surface (Stage 1A, Stage 3 and Stage 4) is live in the Scheduler backend; the changelog lists each publish. Each route says
 `x-status: live` (served now) or `planned` (contract only, 404 until its backend issue ships).
 
 ## Publishing a new version
