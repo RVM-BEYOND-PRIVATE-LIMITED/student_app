@@ -76,8 +76,16 @@ jobs:
         run: |
           # Each failure names its cause (the key, the host or the user), never a value.
           mkdir -p ~/.ssh
-          if ! printf '%s' "$SERVER_KEY" | base64 -d > ~/.ssh/id_ed25519 2>/dev/null || [ ! -s ~/.ssh/id_ed25519 ]; then
-            echo "::error::SSH: the key. SERVER_SSH_KEY_BASE64 is not a base64-encoded private key."
+          # The private key base64-encoded (as the Scheduler deploys keep it), or pasted as it is (-----BEGIN ...).
+          if printf '%s' "$SERVER_KEY" | grep -q -- '-----BEGIN [A-Z ]*PRIVATE KEY-----'; then
+            printf '%s\n' "$SERVER_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+            echo "SSH: the key was pasted as it is (not base64); used as it is."
+          elif ! printf '%s' "$SERVER_KEY" | tr -d ' \r\n' | base64 -d > ~/.ssh/id_ed25519 2>/dev/null || [ ! -s ~/.ssh/id_ed25519 ]; then
+            if printf '%s' "$SERVER_KEY" | grep -qE '^(ssh-(ed25519|rsa)|ecdsa-sha2)'; then
+              echo "::error::SSH: the key. SERVER_SSH_KEY_BASE64 holds a PUBLIC key; it needs the private key."
+            else
+              echo "::error::SSH: the key. SERVER_SSH_KEY_BASE64 is neither a base64-encoded private key nor a pasted one."
+            fi
             exit 1
           fi
           chmod 600 ~/.ssh/id_ed25519
