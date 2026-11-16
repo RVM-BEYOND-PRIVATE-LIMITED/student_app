@@ -1,0 +1,17 @@
+# The student web host before its certificate exists (web-deploy.yml): HTTP only, so certbot can
+# answer its challenge. __HOST__ is replaced by the deploy.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __HOST__;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/student-web-acme;
+    }
+
+    location / {
+        root /var/www/student-web;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+}

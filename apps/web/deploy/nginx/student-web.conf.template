@@ -1,0 +1,45 @@
+# The student web host (student_app #20 item 11): static files over HTTPS. __HOST__ is replaced by
+# the deploy. It only serves files; every API call goes to the Student API host.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __HOST__;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/student-web-acme;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name __HOST__;
+
+    ssl_certificate /etc/letsencrypt/live/__HOST__/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/__HOST__/privkey.pem;
+
+    root /var/www/student-web;
+    index index.html;
+    client_max_body_size 64k;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header X-Frame-Options DENY always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    location = /index.html {
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        add_header X-Frame-Options DENY always;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
