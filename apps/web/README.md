@@ -28,5 +28,5 @@ remaining #7 items and are not hidden work.
   reload, and a failing test removes only this site.
 - It deploys nothing until Prakash has added the host's DNS record (proposed `app.rvmcad.org`),
   the repository variable `STUDENT_WEB_HOST` (a secret of that name works too), and the secrets `SERVER_HOST`, `SERVER_USER` and
-  `SERVER_SSH_KEY_BASE64`. The Student API must also allow the host as a browser origin (the
+  `SERVER_SSH_KEY_BASE64` (the private key base64-encoded, or pasted as it is). The Student API must also allow the host as a browser origin (the
   backend's `STUDENT_CORS_ORIGINS`).
