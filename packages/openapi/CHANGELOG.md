@@ -4,6 +4,12 @@ Additive changes stay in v1: new paths, new optional fields, new enum values the
 tolerates. A breaking change is never made in place: it gets a new path and a raised minimum
 app version, and the old path keeps working until that version is enforced.
 
+## 0.26.0 (16 Nov 2026)
+
+Copied unchanged from Scheduler_Backend at commit 9ee0905. Adds `GET /v1/me/registrations/{id}/undertaking`: the
+signed undertaking PDF of the student's own registration, kept privately by the server (Scheduler_Backend #256). The
+generated Dart client gains the call on `JoiningApi`; nothing else changes.
+
 ## 0.25.0 (15 Nov 2026)
 
 The full Student API surface, copied unchanged from Scheduler_Backend at commit 12e8df2:

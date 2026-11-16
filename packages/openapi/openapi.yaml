@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: RVM Student API
-  version: 0.25.0
+  version: 0.26.0
   # Copied unchanged from Scheduler_Backend docs/api/student-api.openapi.yaml at this commit.
-  x-source-commit: 12e8df25a31d65f6a177f509c6c02c9d88acbf81
+  x-source-commit: 9ee090583a58a14e0c0637b561538eb7ddf9cfce
   summary: What the RVM student app and its web version call.
   description: |
     The `/v1` surface of Stage 1A: sign-in, linking a student to their admission, consents and
@@ -1173,6 +1173,36 @@ paths:
         '422': { $ref: '#/components/responses/RegistrationIncomplete' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /v1/me/registrations/{id}/undertaking:
+    get:
+      tags: [joining]
+      operationId: getUndertakingPdf
+      summary: My signed undertaking as a PDF
+      description: |
+        The undertaking as it was agreed when the registration was submitted (#256): the version, the details as typed,
+        the ID type and its last 4 characters, the video's start and end and each term with when it was accepted.
+        It is kept in private storage and never replaced. A PDF in base64, like a receipt. A draft, or another
+        student's registration, answers 404.
+      x-status: live
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: The PDF.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReceiptPdf' }
+              examples:
+                one: { value: { filename: undertaking-5b0c3e7a.pdf, content_type: application/pdf, pdf_base64: JVBERi0xLjMK } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '426': { $ref: '#/components/responses/UpgradeRequired' }
         '503': { $ref: '#/components/responses/Unavailable' }
 

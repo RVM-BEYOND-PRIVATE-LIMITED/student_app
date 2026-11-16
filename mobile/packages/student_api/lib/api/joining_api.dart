@@ -366,6 +366,74 @@ class JoiningApi {
     return null;
   }
 
+  /// My signed undertaking as a PDF
+  ///
+  /// The undertaking as it was agreed when the registration was submitted (#256): the version, the details as typed, the ID type and its last 4 characters, the video's start and end and each term with when it was accepted. It is kept in private storage and never replaced. A PDF in base64, like a receipt. A draft, or another student's registration, answers 404. 
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<Response> getUndertakingPdfWithHttpInfo(String id, { String? xAppVersion, Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/v1/me/registrations/{id}/undertaking'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (xAppVersion != null) {
+      headerParams[r'X-App-Version'] = parameterToString(xAppVersion);
+    }
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// My signed undertaking as a PDF
+  ///
+  /// The undertaking as it was agreed when the registration was submitted (#256): the version, the details as typed, the ID type and its last 4 characters, the video's start and end and each term with when it was accepted. It is kept in private storage and never replaced. A PDF in base64, like a receipt. A draft, or another student's registration, answers 404. 
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<ReceiptPdf?> getUndertakingPdf(String id, { String? xAppVersion, Future<void>? abortTrigger, }) async {
+    final response = await getUndertakingPdfWithHttpInfo(id, xAppVersion: xAppVersion, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'ReceiptPdf',) as ReceiptPdf;
+    
+    }
+    return null;
+  }
+
   /// Batches I can choose for my courses
   ///
   /// Needs the Registered stage. Only batches of my centre, for a course I bought, starting between 3 days ago and 14 days from today, with room. No batch name, faculty or seat count. 
