@@ -4,7 +4,7 @@ name: web-deploy
 # touches it, or by hand. It does NOTHING until Prakash has:
 #   - pointed the host's DNS A record at the server (proposed app.rvmcad.org; never student.rvmcad.org,
 #     the old portal),
-#   - set the repository VARIABLE STUDENT_WEB_HOST to that host name,
+#   - set the repository VARIABLE STUDENT_WEB_HOST to that host name (a secret of that name is read too),
 #   - added the SECRETS SERVER_HOST, SERVER_USER and SERVER_SSH_KEY_BASE64 (the same server and key
 #     the Scheduler frontend deploys with).
 # Until then the job ends with a notice and no error.
@@ -37,13 +37,19 @@ jobs:
       - name: Configured?
         id: cfg
         env:
-          HOST_NAME: ${{ vars.STUDENT_WEB_HOST }}
+          HOST_NAME: ${{ vars.STUDENT_WEB_HOST || secrets.STUDENT_WEB_HOST }}
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_KEY: ${{ secrets.SERVER_SSH_KEY_BASE64 }}
         run: |
-          if [ -z "$HOST_NAME" ] || [ -z "$SERVER_HOST" ] || [ -z "$SERVER_USER" ] || [ -z "$SERVER_KEY" ]; then
-            echo "::notice::The student web host is not configured (variable STUDENT_WEB_HOST; secrets SERVER_HOST, SERVER_USER, SERVER_SSH_KEY_BASE64). Nothing deployed."
+          missing=""
+          [ -n "$HOST_NAME" ] || missing="$missing STUDENT_WEB_HOST"
+          [ -n "$SERVER_HOST" ] || missing="$missing SERVER_HOST"
+          [ -n "$SERVER_USER" ] || missing="$missing SERVER_USER"
+          [ -n "$SERVER_KEY" ] || missing="$missing SERVER_SSH_KEY_BASE64"
+          if [ -n "$missing" ]; then
+            # Names only, never a value.
+            echo "::notice::The student web host is not configured. Missing:${missing}. Nothing deployed."
             echo "go=false" >> "$GITHUB_OUTPUT"
           elif ! printf '%s' "$HOST_NAME" | grep -Eq '^[a-z0-9.-]+\.[a-z]{2,}$' || [ "$HOST_NAME" = "student.rvmcad.org" ]; then
             echo "::error::STUDENT_WEB_HOST is not a usable host name (student.rvmcad.org is the old portal's and is refused)."
@@ -66,11 +72,33 @@ jobs:
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_KEY: ${{ secrets.SERVER_SSH_KEY_BASE64 }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
+          # Each failure names its cause (the key, the host or the user), never a value.
           mkdir -p ~/.ssh
-          printf '%s' "$SERVER_KEY" | base64 -d > ~/.ssh/id_ed25519
+          if ! printf '%s' "$SERVER_KEY" | base64 -d > ~/.ssh/id_ed25519 2>/dev/null || [ ! -s ~/.ssh/id_ed25519 ]; then
+            echo "::error::SSH: the key. SERVER_SSH_KEY_BASE64 is not a base64-encoded private key."
+            exit 1
+          fi
           chmod 600 ~/.ssh/id_ed25519
+          if ! ssh-keygen -y -P '' -f ~/.ssh/id_ed25519 > /dev/null 2>&1; then
+            echo "::error::SSH: the key. SERVER_SSH_KEY_BASE64 decodes, but not to a private key without a passphrase."
+            exit 1
+          fi
+          if ! timeout 15 bash -c "cat < /dev/null > /dev/tcp/$SERVER_HOST/22" 2>/dev/null; then
+            echo "::error::SSH: the host. SERVER_HOST does not answer on port 22."
+            exit 1
+          fi
           ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          if ! ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes "$SERVER_USER@$SERVER_HOST" true 2>/tmp/ssh.err; then
+            if grep -qi 'permission denied' /tmp/ssh.err; then
+              echo "::error::SSH: the user or the key. The server refused this key for SERVER_USER (the key is not in that user's authorized_keys, or the user is wrong)."
+            else
+              echo "::error::SSH: the host. The connection failed before sign-in ($(grep -oiE 'connection (refused|timed out|closed)|host key verification failed|no route to host' /tmp/ssh.err | head -1))."
+            fi
+            exit 1
+          fi
+          echo "SSH: signed in."
 
       - name: Upload
         if: steps.cfg.outputs.go == 'true'
@@ -86,7 +114,7 @@ jobs:
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
-          HOST_NAME: ${{ vars.STUDENT_WEB_HOST }}
+          HOST_NAME: ${{ vars.STUDENT_WEB_HOST || secrets.STUDENT_WEB_HOST }}
         run: |
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$SERVER_USER@$SERVER_HOST" "HOST_NAME='$HOST_NAME' bash -s" << 'ENDSSH'
           set -u
@@ -121,7 +149,7 @@ jobs:
       - name: Check
         if: steps.cfg.outputs.go == 'true'
         env:
-          HOST_NAME: ${{ vars.STUDENT_WEB_HOST }}
+          HOST_NAME: ${{ vars.STUDENT_WEB_HOST || secrets.STUDENT_WEB_HOST }}
         run: |
           code=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "https://$HOST_NAME/" || true)
           echo "https://$HOST_NAME/ -> ${code:-000}"
