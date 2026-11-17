@@ -96,6 +96,8 @@ class OtpChallenge {
     required this.channel,
     required this.expiresAt,
     required this.resendAvailableAt,
+    this.pilot = false,
+    this.smsFallbackAt,
   });
 
   factory OtpChallenge.fromJson(Map<String, dynamic> json) => OtpChallenge(
@@ -103,12 +105,24 @@ class OtpChallenge {
     channel: asString(json['channel'], 'sms'),
     expiresAt: asDateOrNull(json['expires_at']),
     resendAvailableAt: asDateOrNull(json['resend_available_at']),
+    pilot: asBool(json['pilot']),
+    smsFallbackAt: asDateOrNull(json['sms_fallback_at']),
   );
 
   final String challengeId;
   final String channel;
   final DateTime? expiresAt;
   final DateTime? resendAvailableAt;
+
+  /// Contract 0.30.0 (Scheduler_Backend #570): true while the app is open only
+  /// to a pilot list. The reply is then the same for every number, whether a
+  /// code was sent or not, so the screen must not say "we sent a code".
+  final bool pilot;
+
+  /// Contract 0.30.0 (Scheduler_Backend #203): when the code went on WhatsApp
+  /// and the automatic SMS fallback is on, the time the same code goes by SMS
+  /// unless WhatsApp has confirmed delivery. Null otherwise.
+  final DateTime? smsFallbackAt;
 
   bool get byWhatsApp => channel == 'whatsapp';
 }

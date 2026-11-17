@@ -150,7 +150,7 @@ class AuthApi {
 
   /// Send a sign-in code to a phone
   ///
-  /// The code goes on WhatsApp; if that cannot be sent it goes by SMS at once. The reply is the same whether or not the phone already has an account. While the app is open only to a pilot, a phone outside it gets the same reply and no message. When the app is closed to everyone the reply is 503 `MODULE_OFF`. 
+  /// The code goes on WhatsApp; if that cannot be sent it goes by SMS at once. The reply is the same whether or not the phone already has an account. While the app is open only to a pilot, a phone outside it gets the same reply and no message; every reply then carries `pilot: true`, so the app should not say that a code was sent. When the app is closed to everyone the reply is 503 `MODULE_OFF`. 
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -196,7 +196,7 @@ class AuthApi {
 
   /// Send a sign-in code to a phone
   ///
-  /// The code goes on WhatsApp; if that cannot be sent it goes by SMS at once. The reply is the same whether or not the phone already has an account. While the app is open only to a pilot, a phone outside it gets the same reply and no message. When the app is closed to everyone the reply is 503 `MODULE_OFF`. 
+  /// The code goes on WhatsApp; if that cannot be sent it goes by SMS at once. The reply is the same whether or not the phone already has an account. While the app is open only to a pilot, a phone outside it gets the same reply and no message; every reply then carries `pilot: true`, so the app should not say that a code was sent. When the app is closed to everyone the reply is 503 `MODULE_OFF`. 
   ///
   /// Parameters:
   ///

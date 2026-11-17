@@ -4,6 +4,21 @@ Additive changes stay in v1: new paths, new optional fields, new enum values the
 tolerates. A breaking change is never made in place: it gets a new path and a raised minimum
 app version, and the old path keeps working until that version is enforced.
 
+## 0.30.0 (17 Nov 2026)
+
+Copied unchanged from Scheduler_Backend at commit b83ee8a. Two optional fields on the sign-in code reply
+(`OtpChallenge`), both ignored by older apps:
+
+- `pilot: true` while the app is open only to a pilot list (Scheduler_Backend #570). The reply is then the same for
+  every number, whether a code was sent or not, so the code screen says "If this number is on the pilot list, your
+  code is on its way" instead of "We sent a code on WhatsApp". A number outside the pilot is now answered with the
+  channel a real send would use, never WhatsApp when WhatsApp cannot be sent.
+- `sms_fallback_at` when the code went on WhatsApp and the automatic SMS fallback is on (Scheduler_Backend #203,
+  off until Gallabox and its webhook are configured): unless WhatsApp has confirmed delivery by then, the same code
+  goes by SMS. The code screen counts down to it.
+
+The generated Dart client is regenerated; no path is added or removed.
+
 ## 0.29.0 (16 Nov 2026)
 
 Copied unchanged from Scheduler_Backend at commit 33d31e4. Additive changes, all off until the centre sets them:
