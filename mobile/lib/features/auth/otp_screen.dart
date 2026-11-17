@@ -63,6 +63,7 @@ class _OtpScreenState extends State<OtpScreen> {
           }
           final verifying = state.phase == AuthPhase.verifying;
           final wait = _secondsUntil(challenge.resendAvailableAt);
+          final fallbackWait = _secondsUntil(challenge.smsFallbackAt);
           final deviceChange =
               state.failure?.code == 'DEVICE_CHANGE_NEEDS_CENTRE';
           return Scaffold(
@@ -72,11 +73,28 @@ class _OtpScreenState extends State<OtpScreen> {
                 padding: const EdgeInsets.all(RvmSpacing.lg),
                 children: [
                   Text(
-                    challenge.byWhatsApp
+                    // Scheduler_Backend #570: in pilot the reply is the same
+                    // whether or not a code was sent, so say only what is true.
+                    challenge.pilot
+                        ? l10n.otpSentPilot(maskPhone(state.phone ?? ''))
+                        : challenge.byWhatsApp
                         ? l10n.otpSentWhatsApp(maskPhone(state.phone ?? ''))
                         : l10n.otpSentSms(maskPhone(state.phone ?? '')),
                     style: text.titleMedium,
                   ),
+                  // Scheduler_Backend #203: the server sends the same code by
+                  // SMS if WhatsApp has not delivered it by this time.
+                  if (challenge.byWhatsApp &&
+                      !challenge.pilot &&
+                      challenge.smsFallbackAt != null) ...[
+                    const SizedBox(height: RvmSpacing.sm),
+                    Text(
+                      fallbackWait > 0
+                          ? l10n.otpSmsFallbackIn(_clock(fallbackWait))
+                          : l10n.otpSmsFallbackSent,
+                      style: text.bodyMedium,
+                    ),
+                  ],
                   const SizedBox(height: RvmSpacing.lg),
                   TextField(
                     controller: _code,

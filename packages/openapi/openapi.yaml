@@ -1,13 +1,20 @@
 openapi: 3.1.0
 info:
   title: RVM Student API
-  version: 0.29.0
+  version: 0.30.0
   # Copied unchanged from Scheduler_Backend docs/api/student-api.openapi.yaml at this commit.
-  x-source-commit: 33d31e4acf9b4ce76cfac59e6ccfe2affd28d2ff
+  x-source-commit: b83ee8afdef1a31fc21b491a57807e3a27a4e203
   summary: What the RVM student app and its web version call.
   description: |
     The `/v1` surface of Stage 1A: sign-in, linking a student to their admission, consents and
     the age tick, Jobs access, the Campus hand-off and the prompts that come back from Campus.
+
+    Changes in 0.30.0: the sign-in code reply (`OtpChallenge`) has two optional fields (#570, #203). `pilot: true`
+    while the app is open only to a pilot list: the reply is then the same for every number, sent or not, so the app
+    shows wording that is true either way instead of "we sent a code". `sms_fallback_at`, when the code went on
+    WhatsApp and the automatic SMS fallback is on: unless WhatsApp has confirmed delivery by then, the same code goes
+    by SMS. A number outside the pilot is answered with the channel a real request would use now, never WhatsApp
+    when WhatsApp cannot be sent. Older apps ignore both fields.
 
     Changes in 0.29.0: the admission-number request of 0.28.0 is a field, not a state. `POST /v1/me/link/auto` answers
     `needs_centre` with `admission_number_required: true` (a new optional field) instead of the state
@@ -140,7 +147,8 @@ paths:
       description: |
         The code goes on WhatsApp; if that cannot be sent it goes by SMS at once. The reply is the
         same whether or not the phone already has an account. While the app is open only to a
-        pilot, a phone outside it gets the same reply and no message. When the app is closed to
+        pilot, a phone outside it gets the same reply and no message; every reply then carries
+        `pilot: true`, so the app should not say that a code was sent. When the app is closed to
         everyone the reply is 503 `MODULE_OFF`.
       x-status: live
       security: []
@@ -165,6 +173,8 @@ paths:
               examples:
                 whatsapp: { $ref: '#/components/examples/ChallengeWhatsapp' }
                 sms_fallback: { $ref: '#/components/examples/ChallengeSms' }
+                pilot: { $ref: '#/components/examples/ChallengePilot' }
+                whatsapp_with_sms_fallback: { $ref: '#/components/examples/ChallengeWhatsappFallback' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { $ref: '#/components/responses/IdempotencyConflict' }
         '426': { $ref: '#/components/responses/UpgradeRequired' }
@@ -3907,6 +3917,18 @@ components:
             - type: 'null'
             - type: string
               format: date-time
+        pilot:
+          type: boolean
+          description: |
+            Present and true while the app is open only to a pilot list. The reply is then the same for every number,
+            whether or not a code was sent, so show wording that is true either way (for example "If this number is
+            on the pilot, your code is on its way"). Absent once the app is open to everyone.
+        sms_fallback_at:
+          type: string
+          format: date-time
+          description: |
+            Present when the code went on WhatsApp and the automatic SMS fallback is on: unless WhatsApp has confirmed
+            delivery by this time, the same code is sent by SMS. Absent when the fallback is off or the code went by SMS.
 
     Device:
       type: object
@@ -5536,6 +5558,12 @@ components:
       value: { challenge_id: 7d1f8c2e-1b3a-4c5d-9e6f-0a1b2c3d4e5f, channel: whatsapp, expires_at: '2026-12-01T10:05:00Z', resend_available_at: '2026-12-01T10:00:30Z' }
     ChallengeSms:
       value: { challenge_id: 7d1f8c2e-1b3a-4c5d-9e6f-0a1b2c3d4e5f, channel: sms, expires_at: '2026-12-01T10:05:00Z', resend_available_at: null }
+    ChallengePilot:
+      summary: While the app is open only to a pilot list; the same reply whether or not the number is on it
+      value: { challenge_id: 7d1f8c2e-1b3a-4c5d-9e6f-0a1b2c3d4e5f, channel: sms, expires_at: '2026-12-01T10:05:00Z', resend_available_at: '2026-12-01T10:00:30Z', pilot: true }
+    ChallengeWhatsappFallback:
+      summary: On WhatsApp, with the automatic SMS fallback on
+      value: { challenge_id: 7d1f8c2e-1b3a-4c5d-9e6f-0a1b2c3d4e5f, channel: whatsapp, expires_at: '2026-12-01T10:05:00Z', resend_available_at: '2026-12-01T10:00:30Z', sms_fallback_at: '2026-12-01T10:00:30Z' }
     TokenPairApp:
       value:
         token_type: Bearer

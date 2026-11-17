@@ -17,6 +17,8 @@ class OtpChallenge {
     required this.channel,
     required this.expiresAt,
     required this.resendAvailableAt,
+    this.pilot,
+    this.smsFallbackAt,
   });
 
   String challengeId;
@@ -28,12 +30,32 @@ class OtpChallenge {
   /// When the SMS resend opens. Null once it has been used.
   DateTime? resendAvailableAt;
 
+  /// Present and true while the app is open only to a pilot list. The reply is then the same for every number, whether or not a code was sent, so show wording that is true either way (for example \"If this number is on the pilot, your code is on its way\"). Absent once the app is open to everyone. 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  bool? pilot;
+
+  /// Present when the code went on WhatsApp and the automatic SMS fallback is on: unless WhatsApp has confirmed delivery by this time, the same code is sent by SMS. Absent when the fallback is off or the code went by SMS. 
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  DateTime? smsFallbackAt;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is OtpChallenge &&
     other.challengeId == challengeId &&
     other.channel == channel &&
     other.expiresAt == expiresAt &&
-    other.resendAvailableAt == resendAvailableAt;
+    other.resendAvailableAt == resendAvailableAt &&
+    other.pilot == pilot &&
+    other.smsFallbackAt == smsFallbackAt;
 
   @override
   int get hashCode =>
@@ -41,10 +63,12 @@ class OtpChallenge {
     (challengeId.hashCode) +
     (channel.hashCode) +
     (expiresAt.hashCode) +
-    (resendAvailableAt == null ? 0 : resendAvailableAt!.hashCode);
+    (resendAvailableAt == null ? 0 : resendAvailableAt!.hashCode) +
+    (pilot == null ? 0 : pilot!.hashCode) +
+    (smsFallbackAt == null ? 0 : smsFallbackAt!.hashCode);
 
   @override
-  String toString() => 'OtpChallenge[challengeId=$challengeId, channel=$channel, expiresAt=$expiresAt, resendAvailableAt=$resendAvailableAt]';
+  String toString() => 'OtpChallenge[challengeId=$challengeId, channel=$channel, expiresAt=$expiresAt, resendAvailableAt=$resendAvailableAt, pilot=$pilot, smsFallbackAt=$smsFallbackAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -55,6 +79,16 @@ class OtpChallenge {
       json[r'resend_available_at'] = this.resendAvailableAt!.toUtc().toIso8601String();
     } else {
       json[r'resend_available_at'] = null;
+    }
+    if (this.pilot != null) {
+      json[r'pilot'] = this.pilot;
+    } else {
+      json[r'pilot'] = null;
+    }
+    if (this.smsFallbackAt != null) {
+      json[r'sms_fallback_at'] = this.smsFallbackAt!.toUtc().toIso8601String();
+    } else {
+      json[r'sms_fallback_at'] = null;
     }
     return json;
   }
@@ -85,6 +119,8 @@ class OtpChallenge {
         channel: OtpChallengeChannelEnum.fromJson(json[r'channel'])!,
         expiresAt: mapDateTime(json, r'expires_at', r'')!,
         resendAvailableAt: mapDateTime(json, r'resend_available_at', r''),
+        pilot: mapValueOfType<bool>(json, r'pilot'),
+        smsFallbackAt: mapDateTime(json, r'sms_fallback_at', r''),
       );
     }
     return null;
