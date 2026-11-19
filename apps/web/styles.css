@@ -12,6 +12,10 @@ body {
   background: var(--student-navy); color: var(--student-white);
   position: sticky; top: 0;
 }
+/* The rvm wordmark in Forge Orange on the Ironwood bar, then the product name (the House of RVM lockup). */
+.brand { display: inline-flex; align-items: center; gap: 10px; }
+.brand svg { height: 18px; width: auto; display: block; }
+.brand path { fill: var(--student-accent); }
 .muted { opacity: .8; font-size: 14px; }
 .shell { max-width: 920px; margin: 0 auto; padding: 20px; }
 .card {

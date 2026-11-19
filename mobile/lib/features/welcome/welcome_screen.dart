@@ -75,7 +75,7 @@ class WelcomeScreen extends StatelessWidget {
   }
 }
 
-/// The handoff's navy header with the faint grid, the mark and the wordmark.
+/// The Ironwood header with the faint grid, the rvm mark and the product name.
 class _Header extends StatelessWidget {
   const _Header();
 
@@ -112,7 +112,7 @@ class _Header extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const GearMark(size: 64),
+                  const RvmMark(size: 88),
                   const SizedBox(width: RvmSpacing.md),
                   Flexible(
                     child: FittedBox(

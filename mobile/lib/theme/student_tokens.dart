@@ -21,22 +21,29 @@ abstract final class StudentFonts {
   static const fallback = [devanagari];
 }
 
-/// The student palette (student_app #57). Light is today's look, exactly; dark
-/// follows the brand kit on the app's own navy.
+/// The student palette: the RVM brand kit (September 2026 rebrand), as in the
+/// Team RVM app (Prakash, 18 Nov 2026): Ironwood, Forge Orange and Ivory.
+/// Light is white first; Dark is built on Ironwood, never navy or black. The
+/// role names are the handoff's: `navy` and `navyDeep` hold Ironwood now.
 ///
 /// The values live in `packages/design-tokens/student.tokens.json`, one source
-/// for the app and the web version. Every text pair below meets WCAG AA; the
-/// two Light exceptions (white on orange, 2.80:1, and fg3 on bg, 2.45:1) are
-/// today's look and are unchanged, as #60 records.
+/// for the app and the web version. Every text pair below meets WCAG AA; fg3
+/// (hints and placeholders, Ironwood 40 %) is 3.17:1 on white, for large or
+/// secondary text only. Labels on Forge Orange are Ironwood (`onAccent`):
+/// white on it is 3.4:1.
 ///
-/// Dark (on bg #0E1834 unless said):
-/// * fg1  #F1F5F9  15.99:1
-/// * fg2  #CBD5E1  11.80:1
-/// * fg3  #94A3B8   6.83:1
-/// * accent #F97316 6.25:1; navy on accent 6.25:1
-/// * accentDark #FB923C on surface #152443 6.80:1
-/// * success #22C55E 7.69:1, warning #FBBF24 10.49:1,
-///   danger #F87171 6.33:1, info #60A5FA 6.89:1
+/// Light (on bg #FFFFFF unless said):
+/// * fg1 #331714 16.49:1, fg2 #6B5A56 6.52:1
+/// * accentDark #C2361A 5.47:1; onAccent on accent 4.80:1
+/// * success #1B7F3B 5.07:1, warning #8A5300 6.33:1,
+///   danger #B3261E 6.54:1, info #2457C5 6.47:1
+///
+/// Dark (on bg #1C0E0B unless said):
+/// * fg1 #F3F5F4 17.17:1, fg2 #CDBFBB 10.53:1, fg3 #B7A7A2 8.11:1
+/// * accent #F84E28 5.47:1; onAccent on accent 4.80:1
+/// * accentDark #FF8A66 on surface #26130F 7.68:1
+/// * success #7BD88F 10.80:1, warning #FFC864 12.26:1,
+///   danger #FFB4AB 11.07:1, info #A8C7FA 10.94:1
 @immutable
 class StudentPalette extends ThemeExtension<StudentPalette> {
   const StudentPalette({
@@ -108,10 +115,10 @@ class StudentPalette extends ThemeExtension<StudentPalette> {
     );
   }
 
-  /// Today's light look, byte for byte.
+  /// The light palette: white first, Ironwood ink, Forge Orange accents.
   static final light = StudentPalette.fromValues(StudentTokenValues.light);
 
-  /// The ink-dark palette.
+  /// The dark palette, built on Ironwood (the Team RVM app's dark theme).
   static final dark = StudentPalette.fromValues(StudentTokenValues.dark);
 
   final Color navy;
@@ -145,11 +152,11 @@ class StudentPalette extends ThemeExtension<StudentPalette> {
   final Color fg2;
   final Color fg3;
 
-  /// The splash's radial gradient, centre to edge. Navy in both themes.
+  /// The splash's radial gradient, centre to edge. Ironwood in both themes.
   List<Color> get splashGradient => [splashStart, splashMid, splashEnd];
 
-  /// The Welcome header's linear gradient, top left to bottom right. Navy in
-  /// both themes.
+  /// The Welcome header's linear gradient, top left to bottom right. The
+  /// Ironwood band in both themes.
   List<Color> get headerGradient => [headerStart, headerEnd];
 
   /// The palette of the nearest [Theme]; the light one when none is set (the

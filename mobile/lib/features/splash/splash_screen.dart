@@ -42,7 +42,7 @@ class SplashScreen extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const GearMark(size: 128),
+                        const RvmMark(size: 168),
                         const SizedBox(height: RvmSpacing.lg + 4),
                         const StudentWordmark(size: 30),
                         const SizedBox(height: RvmSpacing.lg),
