@@ -96,10 +96,11 @@ abstract final class StudentType {
   );
 }
 
-/// The student app's theme (student_app #1 and #57): the handoff's navy and
-/// orange tokens laid on core_ui's `RvmTheme` structure (the same component
-/// themes, core_ui's `RvmSpacing` and `RvmRadii`). Light is today's look;
-/// dark is the ink palette on the app's navy.
+/// The student app's theme (student_app #1 and #57): the RVM brand kit's
+/// tokens (Ironwood, Forge Orange, Ivory) laid on core_ui's `RvmTheme`
+/// structure (the same component themes, core_ui's `RvmSpacing` and
+/// `RvmRadii`). Light is white first; dark is built on Ironwood, as in the
+/// Team RVM app.
 abstract final class StudentTheme {
   /// The light theme for a language: Hindi gets the Devanagari type scale.
   static ThemeData forLanguageCode(String languageCode) =>
