@@ -26,6 +26,8 @@ doc/CommunityComment.md
 doc/CommunityCommentCreate.md
 doc/CommunityCommentCreated.md
 doc/CommunityCommentList.md
+doc/CommunityCommentReportQueue.md
+doc/CommunityCommentReportQueueReportsInner.md
 doc/CommunityFeed.md
 doc/CommunityGroup.md
 doc/CommunityGroupList.md
@@ -249,6 +251,8 @@ lib/model/community_comment.dart
 lib/model/community_comment_create.dart
 lib/model/community_comment_created.dart
 lib/model/community_comment_list.dart
+lib/model/community_comment_report_queue.dart
+lib/model/community_comment_report_queue_reports_inner.dart
 lib/model/community_feed.dart
 lib/model/community_group.dart
 lib/model/community_group_list.dart
@@ -436,6 +440,8 @@ test/community_api_test.dart
 test/community_comment_create_test.dart
 test/community_comment_created_test.dart
 test/community_comment_list_test.dart
+test/community_comment_report_queue_reports_inner_test.dart
+test/community_comment_report_queue_test.dart
 test/community_comment_test.dart
 test/community_feed_test.dart
 test/community_group_list_test.dart

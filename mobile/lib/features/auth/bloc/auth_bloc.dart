@@ -54,6 +54,13 @@ final class AuthRetried extends AuthEvent {
   const AuthRetried();
 }
 
+/// Re-read the signed-in account without leaving the signed-in shell (Home
+/// opens): the fee and stage are read live, so a payment or a staff change
+/// moves the Home status line on the next open, with no restart.
+final class AuthAccountRefreshed extends AuthEvent {
+  const AuthAccountRefreshed();
+}
+
 enum AuthStatus {
   /// The session and the account are being restored.
   checking,
@@ -68,12 +75,7 @@ enum AuthStatus {
   failure,
 }
 
-enum AuthPhase {
-  idle,
-  sendingCode,
-  codeSent,
-  verifying,
-}
+enum AuthPhase { idle, sendingCode, codeSent, verifying }
 
 class AuthState extends Equatable {
   const AuthState({
@@ -149,15 +151,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthOtpRequested>(_onOtpRequested);
     on<AuthOtpResent>(_onOtpResent);
     on<AuthOtpSubmitted>(_onOtpSubmitted);
-    on<AuthAccountUpdated>((event, emit) => emit(
-      state.copyWith(
-        status: AuthStatus.signedIn,
-        account: event.account,
-        clearFailure: true,
+    on<AuthAccountUpdated>(
+      (event, emit) => emit(
+        state.copyWith(
+          status: AuthStatus.signedIn,
+          account: event.account,
+          clearFailure: true,
+        ),
       ),
-    ));
+    );
     on<AuthSignOutRequested>(_onSignOut);
     on<AuthRetried>(_onStarted);
+    on<AuthAccountRefreshed>(_onAccountRefreshed);
   }
 
   final StudentApi _api;
@@ -204,6 +209,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
+  Future<void> _onAccountRefreshed(
+    AuthAccountRefreshed event,
+    Emitter<AuthState> emit,
+  ) async {
+    if (state.account == null) return;
+    try {
+      final account = await _api.me();
+      emit(state.copyWith(account: account));
+    } on UnauthorizedFailure {
+      await _session.endSession();
+      emit(
+        state.copyWith(
+          status: AuthStatus.signedOut,
+          phase: AuthPhase.idle,
+          clearFailure: true,
+        ),
+      );
+    } catch (_) {
+      // Keep the account already on screen; a refresh is best-effort.
+    }
+  }
+
   Future<void> _onOtpRequested(
     AuthOtpRequested event,
     Emitter<AuthState> emit,
@@ -237,11 +264,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final resent = await _api.resendOtp(challenge.challengeId);
       emit(
-        state.copyWith(
-          challenge: resent,
-          resending: false,
-          clearFailure: true,
-        ),
+        state.copyWith(challenge: resent, resending: false, clearFailure: true),
       );
     } on Failure catch (failure) {
       emit(state.copyWith(resending: false, failure: failure));
@@ -286,12 +309,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _registerPush() async {
     try {
       await PushService.instance.init();
+      final installId = await _session.installId();
+      // A token refreshed while the student is signed in must replace the
+      // one the server holds (student_app #72, item 5).
+      PushService.instance.onToken = (token) =>
+          _api.setPushToken(installId: installId, token: token);
       final token = PushService.instance.token;
       if (token == null || token.isEmpty) return;
-      await _api.setPushToken(
-        installId: await _session.installId(),
-        token: token,
-      );
+      await _api.setPushToken(installId: installId, token: token);
     } catch (_) {
       // Push is optional; the next sign-in tries again.
     }
@@ -304,8 +329,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // The local session ends even when the server cannot be told.
     }
     await _session.endSession();
-    emit(
-      AuthState(status: AuthStatus.signedOut, phase: AuthPhase.idle),
-    );
+    PushService.instance.onToken = null;
+    emit(AuthState(status: AuthStatus.signedOut, phase: AuthPhase.idle));
   }
 }

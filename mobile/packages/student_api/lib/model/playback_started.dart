@@ -14,6 +14,9 @@ class PlaybackStarted {
   /// Returns a new [PlaybackStarted] instance.
   PlaybackStarted({
     required this.sessionId,
+    this.provider,
+    this.streamUrl,
+    this.watermarkText,
     required this.otp,
     required this.playbackInfo,
     required this.heartbeatSeconds,
@@ -24,9 +27,27 @@ class PlaybackStarted {
 
   String sessionId;
 
-  String otp;
+  PlaybackStartedProviderEnum? provider;
 
-  String playbackInfo;
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? streamUrl;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? watermarkText;
+
+  String? otp;
+
+  String? playbackInfo;
 
   /// Minimum value: 5
   int heartbeatSeconds;
@@ -42,6 +63,9 @@ class PlaybackStarted {
   @override
   bool operator ==(Object other) => identical(this, other) || other is PlaybackStarted &&
     other.sessionId == sessionId &&
+    other.provider == provider &&
+    other.streamUrl == streamUrl &&
+    other.watermarkText == watermarkText &&
     other.otp == otp &&
     other.playbackInfo == playbackInfo &&
     other.heartbeatSeconds == heartbeatSeconds &&
@@ -53,21 +77,47 @@ class PlaybackStarted {
   int get hashCode =>
     // ignore: unnecessary_parenthesis
     (sessionId.hashCode) +
-    (otp.hashCode) +
-    (playbackInfo.hashCode) +
+    (provider == null ? 0 : provider!.hashCode) +
+    (streamUrl == null ? 0 : streamUrl!.hashCode) +
+    (watermarkText == null ? 0 : watermarkText!.hashCode) +
+    (otp == null ? 0 : otp!.hashCode) +
+    (playbackInfo == null ? 0 : playbackInfo!.hashCode) +
     (heartbeatSeconds.hashCode) +
     (resumed.hashCode) +
     (viewsLeft.hashCode) +
     (expiresIn.hashCode);
 
   @override
-  String toString() => 'PlaybackStarted[sessionId=$sessionId, otp=$otp, playbackInfo=$playbackInfo, heartbeatSeconds=$heartbeatSeconds, resumed=$resumed, viewsLeft=$viewsLeft, expiresIn=$expiresIn]';
+  String toString() => 'PlaybackStarted[sessionId=$sessionId, provider=$provider, streamUrl=$streamUrl, watermarkText=$watermarkText, otp=$otp, playbackInfo=$playbackInfo, heartbeatSeconds=$heartbeatSeconds, resumed=$resumed, viewsLeft=$viewsLeft, expiresIn=$expiresIn]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
       json[r'session_id'] = this.sessionId;
+    if (this.provider != null) {
+      json[r'provider'] = this.provider;
+    } else {
+      json[r'provider'] = null;
+    }
+    if (this.streamUrl != null) {
+      json[r'stream_url'] = this.streamUrl;
+    } else {
+      json[r'stream_url'] = null;
+    }
+    if (this.watermarkText != null) {
+      json[r'watermark_text'] = this.watermarkText;
+    } else {
+      json[r'watermark_text'] = null;
+    }
+    if (this.otp != null) {
       json[r'otp'] = this.otp;
+    } else {
+      json[r'otp'] = null;
+    }
+    if (this.playbackInfo != null) {
       json[r'playback_info'] = this.playbackInfo;
+    } else {
+      json[r'playback_info'] = null;
+    }
       json[r'heartbeat_seconds'] = this.heartbeatSeconds;
       json[r'resumed'] = this.resumed;
       json[r'views_left'] = this.viewsLeft;
@@ -89,9 +139,7 @@ class PlaybackStarted {
         assert(json.containsKey(r'session_id'), 'Required key "PlaybackStarted[session_id]" is missing from JSON.');
         assert(json[r'session_id'] != null, 'Required key "PlaybackStarted[session_id]" has a null value in JSON.');
         assert(json.containsKey(r'otp'), 'Required key "PlaybackStarted[otp]" is missing from JSON.');
-        assert(json[r'otp'] != null, 'Required key "PlaybackStarted[otp]" has a null value in JSON.');
         assert(json.containsKey(r'playback_info'), 'Required key "PlaybackStarted[playback_info]" is missing from JSON.');
-        assert(json[r'playback_info'] != null, 'Required key "PlaybackStarted[playback_info]" has a null value in JSON.');
         assert(json.containsKey(r'heartbeat_seconds'), 'Required key "PlaybackStarted[heartbeat_seconds]" is missing from JSON.');
         assert(json[r'heartbeat_seconds'] != null, 'Required key "PlaybackStarted[heartbeat_seconds]" has a null value in JSON.');
         assert(json.containsKey(r'resumed'), 'Required key "PlaybackStarted[resumed]" is missing from JSON.');
@@ -105,8 +153,11 @@ class PlaybackStarted {
 
       return PlaybackStarted(
         sessionId: mapValueOfType<String>(json, r'session_id')!,
-        otp: mapValueOfType<String>(json, r'otp')!,
-        playbackInfo: mapValueOfType<String>(json, r'playback_info')!,
+        provider: PlaybackStartedProviderEnum.fromJson(json[r'provider']),
+        streamUrl: mapValueOfType<String>(json, r'stream_url'),
+        watermarkText: mapValueOfType<String>(json, r'watermark_text'),
+        otp: mapValueOfType<String>(json, r'otp'),
+        playbackInfo: mapValueOfType<String>(json, r'playback_info'),
         heartbeatSeconds: mapValueOfType<int>(json, r'heartbeat_seconds')!,
         resumed: mapValueOfType<bool>(json, r'resumed')!,
         viewsLeft: mapValueOfType<int>(json, r'views_left')!,
@@ -167,4 +218,82 @@ class PlaybackStarted {
     'expires_in',
   };
 }
+
+
+enum PlaybackStartedProviderEnum {
+  self._(r'self'),
+  vdocipher._(r'vdocipher'),
+  ;
+
+  /// Instantiate a new enum with the provided value.
+  const PlaybackStartedProviderEnum._(this._value);
+
+  /// The underlying value of this enum member.
+  final String _value;
+
+  @override
+  String toString() => _value;
+
+  /// Encodes this enum as a value suitable for JSON.
+  String toJson() => _value;
+
+  /// Returns the instance of [PlaybackStartedProviderEnum] that was successfully decoded
+  /// from the passed [value] on success, null otherwise.
+  static PlaybackStartedProviderEnum? fromJson(dynamic value) => PlaybackStartedProviderEnumTypeTransformer().decode(value);
+
+  /// Returns a [List] containing instances of [PlaybackStartedProviderEnum]
+  /// that were successfully decoded from the passed [JSON][json].
+  static List<PlaybackStartedProviderEnum> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <PlaybackStartedProviderEnum>[];
+    if (json is List && json.isNotEmpty) {
+      for (final row in json) {
+        final value = PlaybackStartedProviderEnum.fromJson(row);
+        if (value != null) {
+          result.add(value);
+        }
+      }
+    }
+    return result.toList(growable: growable);
+  }
+}
+
+/// Transformation class that can [encode] an instance of [PlaybackStartedProviderEnum] to String,
+/// and [decode] dynamic data back to [PlaybackStartedProviderEnum].
+class PlaybackStartedProviderEnumTypeTransformer {
+  factory PlaybackStartedProviderEnumTypeTransformer() => _instance ??= const PlaybackStartedProviderEnumTypeTransformer._();
+
+  const PlaybackStartedProviderEnumTypeTransformer._();
+
+  String encode(PlaybackStartedProviderEnum data) => data._value;
+
+  /// Returns the instance of [PlaybackStartedProviderEnum] that was successfully decoded
+  /// from the passed [data] value on success, null otherwise.
+  ///
+  /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
+  /// then null is returned. However, if [allowNull] is false and the [dynamic value][data]
+  /// cannot be decoded successfully, then an [UnimplementedError] is thrown.
+  ///
+  /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
+  /// and users are still using an old app with the old code.
+  PlaybackStartedProviderEnum? decode(dynamic data, {bool allowNull = true}) {
+    if (data is PlaybackStartedProviderEnum) {
+      return data;
+    }
+    if (data != null) {
+      switch (data) {
+        case r'self': return PlaybackStartedProviderEnum.self;
+        case r'vdocipher': return PlaybackStartedProviderEnum.vdocipher;
+        default:
+          if (!allowNull) {
+            throw ArgumentError('Unknown enum value to decode: $data');
+          }
+      }
+    }
+    return null;
+  }
+
+  /// The singleton instance of this transformer.
+  static PlaybackStartedProviderEnumTypeTransformer? _instance;
+}
+
 

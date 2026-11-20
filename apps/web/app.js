@@ -6,6 +6,24 @@ const app = document.getElementById('app');
 const status = document.getElementById('status');
 let account = null;
 
+// #87 — a website link may ask for Join (with courses) or Jobs. Keep the
+// request through sign-in, then remove it from the address bar so a reload
+// does not repeat it.
+function readIntent() {
+  const params = new URLSearchParams(window.location.search);
+  const go = params.get('go');
+  const courses = (params.get('course') || '')
+    .split(',').map((id) => id.trim()).filter(Boolean);
+  if (params.has('go') || params.has('course')) {
+    params.delete('go');
+    params.delete('course');
+    const rest = params.toString();
+    history.replaceState({}, '', `${location.pathname}${rest ? `?${rest}` : ''}${location.hash}`);
+  }
+  return { go, courses };
+}
+let pendingIntent = readIntent();
+
 const key = () => crypto.randomUUID();
 const json = (r) => r.json();
 
@@ -58,12 +76,21 @@ function signIn() {
       account = signed.account;
       status.textContent = account.phone_masked;
       await theme();
-      home();
+      await afterSignIn();
     } catch (e) { document.getElementById('error').textContent = e.message; }
   };
 }
 
+function afterSignIn() {
+  const intent = pendingIntent;
+  pendingIntent = null;
+  home();
+  if (intent.go === 'join') return go('join', intent.courses);
+  if (intent.go === 'jobs') return go('jobs');
+}
+
 async function home() {
+  stopPlayback();
   view(`<div class="card"><h1>Hello</h1>
     <p class="muted-text">${escape(account?.phone_masked || 'Signed in')} · Stage ${escape(account?.stage || 'visitor')}</p>
     <div class="row">
@@ -81,16 +108,17 @@ async function home() {
   document.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => go(b.dataset.go));
 }
 
-async function go(name) {
+async function go(name, courses = []) {
+  stopPlayback();
   const panel = document.getElementById('panel');
   try {
     if (name === 'timetable') return renderList(panel, 'My classes', '/v1/me/timetable', 'classes', (c) => `${escape(c.date)} · ${escape(c.start_time)}–${escape(c.end_time)} · ${escape(c.faculty_name || '')}`);
     if (name === 'fees') return renderFees(panel);
     if (name === 'complaints') return renderComplaints(panel);
-    if (name === 'videos') return renderList(panel, 'Videos', '/v1/me/videos', 'videos', (v) => `${escape(v.title)} · views left ${escape(v.views_left)}`);
+    if (name === 'videos') return renderVideos(panel);
     if (name === 'quizzes') return renderList(panel, 'Quizzes', '/v1/visitor/quizzes', 'quizzes', (q) => `${escape(q.title)} · ${escape(q.questions)} questions`);
     if (name === 'receipts') return renderReceipts(panel);
-    if (name === 'join') return renderJoin(panel);
+    if (name === 'join') return renderJoin(panel, courses);
     if (name === 'jobs') return renderJobs(panel);
     if (name === 'profile') return renderProfile(panel);
     if (name === 'appearance') return renderAppearance(panel);
@@ -160,7 +188,8 @@ async function renderComplaint(id) {
   } catch (e) { thread.innerHTML = `<div class="card danger">${escape(e.message)}</div>`; }
 }
 
-async function renderJoin(panel) {
+async function renderJoin(panel, selectedCourses = []) {
+  const selected = new Set(selectedCourses.map(String));
   let registration = null;
   try { registration = await call('/v1/me/registrations'); } catch { /* No registration yet. */ }
   const courses = await call('/v1/courses');
@@ -172,7 +201,7 @@ async function renderJoin(panel) {
     <div class="row"><input id="j-dob" class="grow" placeholder="Date of birth (YYYY-MM-DD)" /><input id="j-father" class="grow" placeholder="Father's name" /></div>
     <div class="row"><input id="j-current" class="grow" placeholder="Current address" /><input id="j-permanent" class="grow" placeholder="Permanent address" /></div>
     <div class="row"><input id="j-father-phone" class="grow" placeholder="Father's phone" /></div>
-    <ul>${(courses.courses || []).map((c) => `<li><label><input type="checkbox" value="${escape(c.id)}" /> ${escape(c.name)} · ₹${(c.price_paise/100).toFixed(0)}</label></li>`).join('')}</ul>
+    <ul>${(courses.courses || []).map((c) => `<li><label><input type="checkbox" value="${escape(c.id)}" ${selected.has(String(c.id)) ? 'checked' : ''} /> ${escape(c.name)} · ₹${(c.price_paise/100).toFixed(0)}</label></li>`).join('')}</ul>
     <button id="j-save">Save and continue</button><p id="j-error" class="danger"></p>`}</div>`;
   const save = document.getElementById('j-save');
   if (!save) return;
@@ -194,6 +223,102 @@ async function renderJoin(panel) {
     } catch (e) { document.getElementById('j-error').textContent = e.message; }
   };
 }
+
+let playbackTimer = null;
+let playbackElapsed = null;
+let playbackSession = null;
+
+/** #85 — RVM's own stream in a plain <video>, with a moving watermark and no
+ * download, share, cast or picture-in-picture control. */
+async function renderVideos(panel) {
+  const data = await call('/v1/me/videos');
+  const rows = data.videos || [];
+  panel.innerHTML = `<div class="card"><h2>Videos</h2><ul>${rows.map((v) => `<li>${escape(v.title)} · views left ${escape(v.views_left)} ${v.locked_reason ? `<span class="muted-text">(${escape(v.locked_reason)})</span>` : `<button class="secondary" data-video="${escape(v.id)}">Play</button>`}</li>`).join('') || '<li class="muted-text">Nothing yet.</li>'}</ul></div><div id="player"></div>`;
+  panel.querySelectorAll('[data-video]').forEach((b) => b.onclick = () => openVideo(b.dataset.video));
+}
+
+async function openVideo(videoId) {
+  const host = document.getElementById('player');
+  host.innerHTML = '<div class="card muted-text">Opening…</div>';
+  try {
+    const session = await call('/v1/playback/sessions', { method: 'POST', body: { video_id: videoId } });
+    if (session.provider !== 'self') {
+      host.innerHTML = `<div class="card"><h3>Open this video in the app</h3><p class="muted-text">This recording needs the Android app's protected player.</p></div>`;
+      return;
+    }
+    playbackSession = session;
+    playbackElapsed = Date.now();
+    host.innerHTML = `<div class="card"><div class="player-wrap"><video id="player-video" playsinline controls controlsList="nodownload noremoteplayback noplaybackrate" disablepictureinpicture></video><span id="watermark" class="watermark"></span></div><p id="player-message" class="muted-text"></p></div>`;
+    const video = document.getElementById('player-video');
+    const mark = document.getElementById('watermark');
+    const message = document.getElementById('player-message');
+    video.src = session.stream_url;
+    video.addEventListener('contextmenu', (e) => e.preventDefault());
+    video.addEventListener('ended', () => endPlayback(session.session_id));
+    video.addEventListener('error', () => {
+      stopPlayback();
+      message.textContent = 'This playback has ended. Open the video again.';
+    });
+    if (session.watermark_text) {
+      mark.textContent = session.watermark_text;
+      let corner = 0;
+      const place = () => {
+        const spots = [['12px','12px'],['auto','12px','right'],['12px','auto','bottom'],['auto','auto','right','bottom']];
+        const [top, left, ...rest] = spots[corner % spots.length];
+        mark.style.top = top; mark.style.left = left;
+        mark.style.right = rest.includes('right') ? '12px' : 'auto';
+        mark.style.bottom = rest.includes('bottom') ? '12px' : 'auto';
+        corner += 1;
+      };
+      place();
+      playbackTimer = setInterval(place, 4000);
+    }
+    video.play().catch(() => { message.textContent = 'Press play to start.'; });
+    startHeartbeat(session);
+  } catch (e) {
+    host.innerHTML = `<div class="card danger">${escape(e.message)}</div>`;
+  }
+}
+
+function startHeartbeat(session) {
+  const seconds = Math.max(5, Number(session.heartbeat_seconds) || 15) * 1000;
+  clearInterval(heartbeatTimer);
+  heartbeatTimer = setInterval(async () => {
+    const video = document.getElementById('player-video');
+    if (!video || !playbackSession) return;
+    const elapsed = Math.max(0, Math.round((Date.now() - playbackElapsed) / 1000));
+    playbackElapsed = Date.now();
+    try {
+      const reply = await call(`/v1/playback/sessions/${session.session_id}/heartbeat`, {
+        method: 'POST',
+        body: { position_s: Math.floor(video.currentTime || 0), elapsed_s: elapsed },
+      });
+      if (reply.stop) {
+        video.pause();
+        const message = document.getElementById('player-message');
+        if (message) message.textContent = reply.reason === 'replaced'
+          ? 'This video was opened somewhere else.'
+          : 'This playback has ended. Open the video again.';
+        stopPlayback(false);
+      }
+    } catch { /* The next beat retries; the session stays. */ }
+  }, seconds);
+}
+let heartbeatTimer = null;
+
+function stopPlayback(end = true) {
+  if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  if (playbackTimer) { clearInterval(playbackTimer); playbackTimer = null; }
+  const sessionId = playbackSession?.session_id;
+  playbackSession = null;
+  if (end && sessionId) endPlayback(sessionId);
+}
+
+function endPlayback(sessionId) {
+  void call(`/v1/playback/sessions/${sessionId}/end`, { method: 'POST', body: {} }).catch(() => {});
+}
+
+window.addEventListener('beforeunload', () => stopPlayback());
 
 async function renderJobs(panel) {
   const access = await call('/v1/me/jobs-access');

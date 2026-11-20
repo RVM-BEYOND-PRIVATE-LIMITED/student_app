@@ -39,18 +39,18 @@ void main() {
         expect(env.apiBaseUrl.toString(), 'https://api.example.test');
       });
 
-      test('a release build with no FLAVOR and no host refuses to start, '
-          'and says how to make a dev build', () {
-        expect(
-          () => StudentEnv.resolve(flavor: '', host: '', releaseMode: true),
-          throwsA(
-            isA<StudentEnvError>().having(
-              (e) => e.message,
-              'message',
-              allOf(contains('STUDENT_API_HOST'), contains('FLAVOR=dev')),
-            ),
-          ),
+      test('a release build with no FLAVOR and no host uses the live Student '
+          'API', () {
+        final env = StudentEnv.resolve(
+          flavor: '',
+          host: '',
+          releaseMode: true,
         );
+
+        expect(env.flavor, StudentFlavor.prod);
+        expect(env.apiBaseUrl, StudentEnv.prodApiBaseUrl);
+        expect(env.apiBaseUrl.toString(), 'https://student-api.rvmcad.org');
+        expect(env.hostSetOnPurpose, isFalse);
       });
 
       test('a release build is dev only when FLAVOR=dev is passed', () {
@@ -109,17 +109,11 @@ void main() {
       expect(env.hostSetOnPurpose, isTrue);
     });
 
-    test('a prod build with no host refuses to start', () {
-      expect(
-        () => StudentEnv.resolve(flavor: 'prod', host: ''),
-        throwsA(
-          isA<StudentEnvError>().having(
-            (e) => e.message,
-            'message',
-            contains('STUDENT_API_HOST'),
-          ),
-        ),
-      );
+    test('a prod build with no host uses the live Student API', () {
+      final env = StudentEnv.resolve(flavor: 'prod', host: '');
+
+      expect(env.apiBaseUrl, StudentEnv.prodApiBaseUrl);
+      expect(env.apiBaseUrl.toString(), 'https://student-api.rvmcad.org');
     });
 
     test('a prod host must use https', () {

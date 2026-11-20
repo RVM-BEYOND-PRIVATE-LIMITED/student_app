@@ -261,59 +261,96 @@ class FailureCopy {
   final String title;
   final String body;
 
-  static FailureCopy of(Failure failure, AppLocalizations l10n) =>
-      switch (failure) {
-        NoConnectionFailure() => FailureCopy(
-          icon: Icons.wifi_off_rounded,
-          title: l10n.errorNoConnectionTitle,
-          body: l10n.errorNoConnectionBody,
-        ),
-        TimeoutFailure() => FailureCopy(
+  static FailureCopy of(Failure failure, AppLocalizations l10n) {
+    // A module the server has switched off is not a server fault. The same
+    // wording covers every screen, so no screen turns a 503 MODULE_OFF into
+    // "Server problem".
+    if (failure is ServerFailure) {
+      if (failure.code == 'MODULE_OFF') {
+        return FailureCopy(
+          icon: Icons.lock_clock_rounded,
+          title: l10n.errorNotOpenTitle,
+          body: l10n.errorNotOpenBody,
+        );
+      }
+      if (failure.code == 'NOT_READY') {
+        return FailureCopy(
           icon: Icons.hourglass_bottom_rounded,
-          title: l10n.errorTimeoutTitle,
-          body: l10n.errorTimeoutBody,
-        ),
-        UnauthorizedFailure() => FailureCopy(
-          icon: Icons.lock_outline_rounded,
-          title: l10n.errorSessionTitle,
-          body: l10n.errorSessionBody,
-        ),
-        ForbiddenFailure() => FailureCopy(
-          icon: Icons.block_rounded,
-          title: l10n.errorForbiddenTitle,
-          body: l10n.errorForbiddenBody,
-        ),
-        NotFoundFailure() => FailureCopy(
-          icon: Icons.search_off_rounded,
-          title: l10n.errorNotFoundTitle,
-          body: l10n.errorNotFoundBody,
-        ),
-        TooManyRequestsFailure() => FailureCopy(
-          icon: Icons.schedule_rounded,
-          title: l10n.errorTooManyTitle,
-          body: l10n.errorTooManyBody,
-        ),
-        ServerFailure() => FailureCopy(
-          icon: Icons.cloud_off_rounded,
-          title: l10n.errorServerTitle,
-          body: l10n.errorServerBody,
-        ),
-        BadResponseFailure() => FailureCopy(
-          icon: Icons.error_outline_rounded,
-          title: l10n.errorRequestTitle,
-          body: l10n.errorRequestBody,
-        ),
-        ParseFailure() => FailureCopy(
-          icon: Icons.help_outline_rounded,
-          title: l10n.errorParseTitle,
-          body: l10n.errorParseBody,
-        ),
-        UnknownFailure() => FailureCopy(
-          icon: Icons.error_outline_rounded,
-          title: l10n.errorUnknownTitle,
-          body: l10n.errorUnknownBody,
-        ),
-      };
+          title: l10n.errorStartingTitle,
+          body: l10n.errorStartingBody,
+        );
+      }
+    }
+    if (failure is BadResponseFailure && failure.code == 'NOT_LINKED') {
+      return FailureCopy(
+        icon: Icons.link_off_rounded,
+        title: l10n.errorNotLinkedTitle,
+        body: l10n.errorNotLinkedBody,
+      );
+    }
+    if (failure is ForbiddenFailure &&
+        (failure.code == 'NOT_ELIGIBLE' ||
+            failure.code == 'STAGE_REQUIRED' ||
+            failure.code == 'NOT_MODERATOR')) {
+      return FailureCopy(
+        icon: Icons.lock_outline_rounded,
+        title: l10n.errorNotEligibleTitle,
+        body: l10n.errorNotEligibleBody,
+      );
+    }
+    return switch (failure) {
+      NoConnectionFailure() => FailureCopy(
+        icon: Icons.wifi_off_rounded,
+        title: l10n.errorNoConnectionTitle,
+        body: l10n.errorNoConnectionBody,
+      ),
+      TimeoutFailure() => FailureCopy(
+        icon: Icons.hourglass_bottom_rounded,
+        title: l10n.errorTimeoutTitle,
+        body: l10n.errorTimeoutBody,
+      ),
+      UnauthorizedFailure() => FailureCopy(
+        icon: Icons.lock_outline_rounded,
+        title: l10n.errorSessionTitle,
+        body: l10n.errorSessionBody,
+      ),
+      ForbiddenFailure() => FailureCopy(
+        icon: Icons.block_rounded,
+        title: l10n.errorForbiddenTitle,
+        body: l10n.errorForbiddenBody,
+      ),
+      NotFoundFailure() => FailureCopy(
+        icon: Icons.search_off_rounded,
+        title: l10n.errorNotFoundTitle,
+        body: l10n.errorNotFoundBody,
+      ),
+      TooManyRequestsFailure() => FailureCopy(
+        icon: Icons.schedule_rounded,
+        title: l10n.errorTooManyTitle,
+        body: l10n.errorTooManyBody,
+      ),
+      ServerFailure() => FailureCopy(
+        icon: Icons.cloud_off_rounded,
+        title: l10n.errorServerTitle,
+        body: l10n.errorServerBody,
+      ),
+      BadResponseFailure() => FailureCopy(
+        icon: Icons.error_outline_rounded,
+        title: l10n.errorRequestTitle,
+        body: l10n.errorRequestBody,
+      ),
+      ParseFailure() => FailureCopy(
+        icon: Icons.help_outline_rounded,
+        title: l10n.errorParseTitle,
+        body: l10n.errorParseBody,
+      ),
+      UnknownFailure() => FailureCopy(
+        icon: Icons.error_outline_rounded,
+        title: l10n.errorUnknownTitle,
+        body: l10n.errorUnknownBody,
+      ),
+    };
+  }
 }
 
 /// The app's own line for a [Failure], never the server's English message.
@@ -440,4 +477,13 @@ class RequestIdBox extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Says why a button did not complete, in the student's language. For an
+/// action (a reply, a reaction, a booking) where the list stays on screen.
+void showFailureSnackBar(BuildContext context, Object error) {
+  final failure = error is Failure ? error : const UnknownFailure();
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(failureLine(failure, context.l10n))));
 }

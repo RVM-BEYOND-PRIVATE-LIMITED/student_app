@@ -65,6 +65,8 @@ part 'model/community_comment.dart';
 part 'model/community_comment_create.dart';
 part 'model/community_comment_created.dart';
 part 'model/community_comment_list.dart';
+part 'model/community_comment_report_queue.dart';
+part 'model/community_comment_report_queue_reports_inner.dart';
 part 'model/community_feed.dart';
 part 'model/community_group.dart';
 part 'model/community_group_list.dart';

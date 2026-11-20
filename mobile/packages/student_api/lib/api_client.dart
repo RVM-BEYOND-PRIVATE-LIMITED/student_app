@@ -221,6 +221,10 @@ class ApiClient {
           return CommunityCommentCreated.fromJson(value);
         case 'CommunityCommentList':
           return CommunityCommentList.fromJson(value);
+        case 'CommunityCommentReportQueue':
+          return CommunityCommentReportQueue.fromJson(value);
+        case 'CommunityCommentReportQueueReportsInner':
+          return CommunityCommentReportQueueReportsInner.fromJson(value);
         case 'CommunityFeed':
           return CommunityFeed.fromJson(value);
         case 'CommunityGroup':

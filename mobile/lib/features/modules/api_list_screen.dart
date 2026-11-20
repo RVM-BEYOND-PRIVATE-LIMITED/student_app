@@ -20,6 +20,7 @@ class ApiListScreen extends StatefulWidget {
     required this.itemBuilder,
     this.header,
     this.refreshPath,
+    this.actions,
   });
 
   final String title;
@@ -29,6 +30,7 @@ class ApiListScreen extends StatefulWidget {
   final Widget Function(BuildContext, Map<String, dynamic>) itemBuilder;
   final Widget? header;
   final String? refreshPath;
+  final List<Widget>? actions;
 
   @override
   State<ApiListScreen> createState() => _ApiListScreenState();
@@ -44,7 +46,7 @@ class _ApiListScreenState extends State<ApiListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: AppBar(title: Text(widget.title), actions: widget.actions),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _future,
         builder: (context, snapshot) {

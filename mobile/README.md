@@ -29,11 +29,12 @@ modules are there too: joining (courses, registration, undertaking, ID upload,
 payment order and batch), fees and receipts with the receipt PDF, attendance
 and corrections, timetable, announcements, notifications, complaints,
 community, visitor lectures/quizzes/visits, placement proof and payout
-account, referral, learning (online classes, protected VdoCipher playback with
-the server's heartbeat, test scores, interview packs, the daily quiz and the
-timed mock interview).
+account, referral, learning (online classes, recorded videos on RVM's own stream
+or VdoCipher, with the server's heartbeat, test scores, interview packs, the
+daily quiz and the timed mock interview), live Razorpay Checkout, community
+polls and student moderation, practice timings and the visitor course list.
 
-The app calls the published contract (0.25.0, 105 live operations): the typed
+The app calls the published contract (0.32.0, 111 live operations): the typed
 client in `lib/core/api/` mirrors the paths and bodies the app uses, and
 `test/core/api/student_api_contract_test.dart` fails when the two drift.
 
@@ -42,7 +43,7 @@ client in `lib/core/api/` mirrors the paths and bodies the app uses, and
 The app is built against the published Student API contract in
 [`packages/openapi`](../packages/openapi/README.md), never against guesses. That file is a
 copy of the backend's contract (the Student API is built in the backend repository, not here).
-It is at **0.25.0**, with `x-source-commit` naming the backend commit it was copied from.
+It is at **0.32.0**, with `x-source-commit` naming the backend commit it was copied from.
 
 `packages/openapi/README.md` says how to start a mock server from its examples and how to pick a
 named example; point the dev configuration's API base URL at the mock. The Dart client is
@@ -111,7 +112,7 @@ flutter run              # dev build, Student API on this computer
 | Define | Values | Default |
 | --- | --- | --- |
 | `FLAVOR` | `dev`, `prod` | `prod` in a release build, `dev` otherwise |
-| `STUDENT_API_HOST` | the Student API's base address | none |
+| `STUDENT_API_HOST` | the Student API's base address | `https://student-api.rvmcad.org` in prod, `http://127.0.0.1:3000` in dev |
 
 - **dev with no host** sends every request to `http://127.0.0.1:3000`, this
   computer. From a phone, run `adb reverse tcp:3000 tcp:3000` first; the
@@ -119,13 +120,12 @@ flutter run              # dev build, Student API on this computer
   A dev build never reaches a live host unless a developer sets one on
   purpose: every request to any other host is refused before anything is
   sent.
-- **prod** needs an `https://` host. A prod build made without one does not
-  start: it shows a short message and makes no request. No production
-  address is written in the code; the release pipeline will pass it once the
-  host exists (student_app #20). A release build made without `FLAVOR` is a
-  prod build, so it never has the Developer menu or the loopback host; with
-  no host either it shows that short message. The CI size build is such a
-  build (`tool/build_release.sh` passes `FLAVOR=prod`, and CI no host).
+- **prod with no host** sends every request to the live Student API,
+  `https://student-api.rvmcad.org` (`StudentEnv.prodApiBaseUrl`). A
+  `STUDENT_API_HOST` set at build time replaces it and must be `https://`.
+  A release build made without `FLAVOR` is a prod build, so it never has the
+  Developer menu or the loopback host. The CI size build is such a build
+  (`tool/build_release.sh` passes `FLAVOR=prod`, and CI no host).
   Only `--dart-define=FLAVOR=dev` makes a dev release build.
 
 #### Which addresses a build may reach
@@ -174,9 +174,9 @@ minimum version.
   as `"full_name": "…"` or `name=…`; a name in free text cannot be
   recognised, so it stays)
   (`lib/core/redact/student_redact.dart`)
-  and kept on the phone only, in the app's private storage, out of backups.
-  The Developer menu shows them. Sending crash reports off the phone is
-  student_app #12 and needs an OK first.
+  and kept on the phone in the app's private storage, out of backups. The
+  Developer menu shows them. Release builds also send a redacted copy to
+  Firebase Crashlytics (student_app #75); debug builds send nothing.
 
 ## Device security (student_app #8)
 
@@ -219,7 +219,7 @@ No permission is needed and no installed app is listed (no
 ## Release builds (student_app #8)
 
 ```bash
-bash tool/build_release.sh --dart-define=STUDENT_API_HOST=https://...
+bash tool/build_release.sh   # prod, live Student API (https://student-api.rvmcad.org)
 dart run tool/check_release.dart \
   build/app/outputs/bundle/release/app-release.aab \
   build/app/outputs/flutter-apk/app-release.apk \

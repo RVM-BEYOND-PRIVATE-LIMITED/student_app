@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: RVM Student API
-  version: 0.30.0
+  version: 0.32.0
   # Copied unchanged from Scheduler_Backend docs/api/student-api.openapi.yaml at this commit.
-  x-source-commit: b83ee8afdef1a31fc21b491a57807e3a27a4e203
+  x-source-commit: a69f3e949acae08733d570fc4e2aefef0400a89c
   summary: What the RVM student app and its web version call.
   description: |
     The `/v1` surface of Stage 1A: sign-in, linking a student to their admission, consents and
@@ -2239,6 +2239,47 @@ paths:
         '426': { $ref: '#/components/responses/UpgradeRequired' }
         '503': { $ref: '#/components/responses/Unavailable' }
 
+  /v1/community/comments/{id}/report:
+    post:
+      tags: [community]
+      operationId: reportCommunityComment
+      summary: Report a comment
+      description: |
+        #294. Off until the community setting `comment_reports` is on (404 `NOT_FOUND` meanwhile). The comment is
+        hidden at once for everyone but the moderators and goes to review; one report per member per comment, sharing
+        the 5-a-day limit with post reports. Moderators never see who reported. With `restored_stay_visible` on, a
+        comment a moderator restored stays visible (`hidden: false`) and the report still goes to review.
+      x-status: live
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommunityReportCreate' }
+            examples:
+              one: { value: { reason: Sharing a phone number } }
+      responses:
+        '201':
+          description: Reported (and hidden unless it was restored before and restored_stay_visible is on).
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommunityReported' }
+              examples:
+                one: { value: { id: 8f9a0b1c-2d3e-4f50-a1b2-c3d4e5f6a7b8, hidden: true } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/CommunityConflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
   /v1/community/mod/reports:
     get:
       tags: [community]
@@ -2327,6 +2368,104 @@ paths:
               schema: { $ref: '#/components/schemas/CommunityModerated' }
               examples:
                 one: { value: { id: 3a4b5c6d-7e8f-4091-a2b3-c4d5e6f7a8b9, hidden: false } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/CommunityConflict' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /v1/community/mod/comment-reports:
+    get:
+      tags: [community]
+      operationId: listCommunityCommentReports
+      summary: Comment review queue (student moderators)
+      description: |
+        #294. Comments with open reports in the groups I moderate: the count and the reasons, never who reported. A
+        non-moderator gets 403 `NOT_MODERATOR`.
+      x-status: live
+      parameters:
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: OK.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommunityCommentReportQueue' }
+              examples:
+                one: { value: { reports: [{ comment_id: 8f9a0b1c-2d3e-4f50-a1b2-c3d4e5f6a7b8, post_id: 3a4b5c6d-7e8f-4091-a2b3-c4d5e6f7a8b9, group_id: 1e2f3a4b-5c6d-4e7f-8091-a2b3c4d5e6f7, group_name: AutoCAD, author: Ravi · AutoCAD · Pune, author_account_id: 5b0c3e7a-2d4f-4a1b-9c8d-7e6f5a4b3c2d, body: DM me, created_at: '2026-12-01T10:00:00Z', hidden: true, report_count: 1, reasons: [], first_reported_at: '2026-12-01T11:00:00Z' }] } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /v1/community/mod/comments/{id}/hide:
+    post:
+      tags: [community]
+      operationId: hideCommunityComment
+      summary: Hide a comment (moderators)
+      description: '#294. Upholds the open reports on the comment.'
+      x-status: live
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommunityHide' }
+            examples:
+              one: { value: { reason: No phone numbers here } }
+      responses:
+        '200':
+          description: Hidden.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommunityModerated' }
+              examples:
+                one: { value: { id: 8f9a0b1c-2d3e-4f50-a1b2-c3d4e5f6a7b8, hidden: true } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/IdempotencyConflict' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /v1/community/mod/comments/{id}/restore:
+    post:
+      tags: [community]
+      operationId: restoreCommunityComment
+      summary: Restore a hidden comment (moderators)
+      description: '#294. Its open reports become restored.'
+      x-status: live
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/AppVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommunityRestore' }
+            examples:
+              one: { value: { note: Nothing wrong with it } }
+      responses:
+        '200':
+          description: Visible again.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommunityModerated' }
+              examples:
+                one: { value: { id: 8f9a0b1c-2d3e-4f50-a1b2-c3d4e5f6a7b8, hidden: false } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/CommunityConflict' }
@@ -3058,8 +3197,9 @@ paths:
       description: |
         Checks access in this order: linked admission, full fee paid, the course is mine (or the recording
         is my batch's), access not ended (6 months after the course end), a view left. Then the device
-        (the bound phone, or my one web session) and one open playback at a time. Returns a playback token
-        for this session only, with a moving watermark set by the server and no offline copy. A view is
+        (the bound phone, or my one web session) and one open playback at a time. Returns how to play for this
+        session only (see PlaybackStarted: a signed link to RVM's own storage by default, with the watermark text
+        set by the server; or a VdoCipher token). A view is
         counted once 5% is watched; reopening within 60 minutes of a counted session does not count again.
       x-status: live
       parameters:
@@ -3081,7 +3221,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PlaybackStarted' }
               examples:
-                one: { value: { session_id: 7a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, otp: 'example-otp', playback_info: 'example-info', heartbeat_seconds: 15, resumed: false, views_left: 1, expires_in: 300 } }
+                own: { value: { session_id: 7a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, provider: self, stream_url: 'https://student-api.example.org/v1/playback/sessions/7a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b/stream?t=1800002400.example', watermark_text: 'Asha Verma 4821', otp: null, playback_info: null, heartbeat_seconds: 15, resumed: false, views_left: 1, expires_in: 2400 } }
+                vdocipher: { value: { session_id: 7a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, provider: vdocipher, otp: 'example-otp', playback_info: 'example-info', heartbeat_seconds: 15, resumed: false, views_left: 1, expires_in: 300 } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404':
           description: No such published video.
@@ -3173,6 +3314,71 @@ paths:
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /v1/playback/sessions/{id}/stream:
+    get:
+      tags: [videos]
+      operationId: streamPlayback
+      summary: The video of an open playback, range by range (own storage)
+      description: |
+        The `stream_url` of PlaybackStarted when `provider` is `self`. No sign-in header (a video element cannot send
+        one): the `t` token is bound to this session and expires with it. Works only while the session is open: once
+        it ends, is replaced or revoked, the answer is 410 `SESSION_ENDED`. Send `Range` as players do; the answer is
+        206 with `Content-Range`. Never a download: `Content-Disposition: inline`, `Cache-Control: no-store`. The app
+        shows no download button and blocks screen recording on the player screen.
+      x-status: live
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: t
+          in: query
+          required: true
+          schema: { type: string }
+        - name: Range
+          in: header
+          required: false
+          schema: { type: string }
+          example: bytes=0-1048575
+      responses:
+        '200':
+          description: The whole file (no Range sent).
+          x-file: true
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+            Content-Disposition: { schema: { type: string, const: inline } }
+          content:
+            video/mp4: { schema: { type: string, format: binary } }
+        '206':
+          description: The range asked for.
+          x-file: true
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+            Content-Disposition: { schema: { type: string, const: inline } }
+            Content-Range: { schema: { type: string }, example: 'bytes 0-1048575/734003200' }
+          content:
+            video/mp4: { schema: { type: string, format: binary } }
+        '403':
+          description: '`STREAM_DENIED`: the token is not for this session, or has expired.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                one: { value: { code: STREAM_DENIED, message: 'This video address is not valid. Open the video again in the app.', details: null, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410':
+          description: '`SESSION_ENDED`: the playback ended, was replaced or revoked.'
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                one: { value: { code: SESSION_ENDED, message: 'This playback has ended. Open the video again in the app.', details: null, request_id: 6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b } }
         '503': { $ref: '#/components/responses/Unavailable' }
 
   /v1/videos/{id}/extra-view-requests:
@@ -4606,6 +4812,31 @@ components:
               reasons: { type: array, items: { type: string } }
               first_reported_at: { type: string, format: date-time }
 
+    CommunityCommentReportQueue:
+      type: object
+      required: [reports]
+      additionalProperties: false
+      properties:
+        reports:
+          type: array
+          items:
+            type: object
+            required: [comment_id, post_id, group_id, group_name, author, author_account_id, body, created_at, hidden, report_count, reasons, first_reported_at]
+            additionalProperties: false
+            properties:
+              comment_id: { type: string, format: uuid }
+              post_id: { type: string, format: uuid }
+              group_id: { type: string, format: uuid }
+              group_name: { type: string }
+              author: { type: string }
+              author_account_id: { oneOf: [{ type: 'null' }, { type: string, format: uuid }] }
+              body: { type: string }
+              created_at: { type: string, format: date-time }
+              hidden: { type: boolean }
+              report_count: { type: integer, minimum: 1 }
+              reasons: { type: array, items: { type: string } }
+              first_reported_at: { type: string, format: date-time }
+
     CommunityHide:
       type: object
       required: [reason]
@@ -5257,12 +5488,22 @@ components:
 
     PlaybackStarted:
       type: object
+      description: |
+        `provider` says how to play (0.31.0, 17 Nov 2026). `self` (the default): play `stream_url` (our own address,
+        /v1/playback/sessions/{id}/stream, see streamPlayback) with an ordinary video player, and overlay
+        `watermark_text`; `otp` and `playback_info` are null. The address works only while this session is open
+        (at most `expires_in` seconds) and is never a download. The app shows NO download, share or cast button and
+        blocks screenshots and screen recording on the player screen. `vdocipher`: the VdoCipher player with `otp` and
+        `playback_info`; `stream_url` is absent. The heartbeat, the 5% count and the 60-minute resume are the same.
       required: [session_id, otp, playback_info, heartbeat_seconds, resumed, views_left, expires_in]
       additionalProperties: false
       properties:
         session_id: { type: string, format: uuid }
-        otp: { type: string }
-        playback_info: { type: string }
+        provider: { type: string, enum: [self, vdocipher] }
+        stream_url: { type: string, format: uri }
+        watermark_text: { type: string }
+        otp: { type: [string, 'null'] }
+        playback_info: { type: [string, 'null'] }
         heartbeat_seconds: { type: integer, minimum: 5 }
         resumed: { type: boolean }
         views_left: { type: integer, minimum: 0 }

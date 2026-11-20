@@ -31,10 +31,9 @@ class StudentEnvError extends Error {
 ///   `http://10.0.2.2:3000` (the emulator) or `https://…` for production.
 ///
 /// A dev build with no host goes to [devLoopback], the developer's own
-/// computer, and never to a live host: unlike the Team app's
-/// `ApiEnvironment`, nothing here defaults to a production address. A prod
-/// build with no host refuses to start, so no production address is guessed
-/// either; the release pipeline passes it (student_app #20).
+/// computer, and never to a live host. A prod build with no host goes to
+/// [prodApiBaseUrl], the live Student API; `STUDENT_API_HOST` overrides it
+/// when another address is wanted (for example a pilot or a staging host).
 @immutable
 class StudentEnv {
   const StudentEnv._({
@@ -59,6 +58,11 @@ class StudentEnv {
   /// 3000 is the Scheduler backend's local port (Scheduler_Backend
   /// server.js: `process.env.PORT || 3000`), where the Student API is to run.
   static final Uri devLoopback = Uri.parse('http://127.0.0.1:3000');
+
+  /// Where a prod build with no `STUDENT_API_HOST` sends requests: the live
+  /// Student API, served by Scheduler_Backend's `student-server.js`. It is
+  /// https, so [allowsRequestTo] accepts it in a prod build.
+  static final Uri prodApiBaseUrl = Uri.parse('https://student-api.rvmcad.org');
 
   static const _flavorDefine = String.fromEnvironment('FLAVOR');
   static const _hostDefine = String.fromEnvironment('STUDENT_API_HOST');
@@ -88,13 +92,10 @@ class StudentEnv {
     final trimmed = host.trim();
     if (trimmed.isEmpty) {
       if (resolvedFlavor == StudentFlavor.prod) {
-        final why = flavor.trim().isEmpty
-            ? ' (a release build with no FLAVOR is prod; '
-                  '--dart-define=FLAVOR=dev makes a dev build)'
-            : '';
-        throw StudentEnvError(
-          'A prod build needs the Student API address: '
-          '--dart-define=STUDENT_API_HOST=https://…$why',
+        return StudentEnv._(
+          flavor: resolvedFlavor,
+          apiBaseUrl: prodApiBaseUrl,
+          hostSetOnPurpose: false,
         );
       }
       return StudentEnv._(
@@ -132,8 +133,8 @@ class StudentEnv {
   ///
   /// * Only `http` and `https` addresses with a host, in every flavor.
   /// * A prod build sends https only, to any host: plain HTTP never leaves
-  ///   it. It has no default host either, so it only knows the address its
-  ///   release pipeline gave it.
+  ///   it. With no `STUDENT_API_HOST` it uses [prodApiBaseUrl]; one set at
+  ///   build time replaces it.
   /// * A dev build may reach this computer and the host the developer set on
   ///   purpose, over http or https; any other host is refused.
   ///

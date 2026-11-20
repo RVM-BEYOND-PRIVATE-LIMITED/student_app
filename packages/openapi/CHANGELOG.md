@@ -4,6 +4,13 @@ Additive changes stay in v1: new paths, new optional fields, new enum values the
 tolerates. A breaking change is never made in place: it gets a new path and a raised minimum
 app version, and the old path keeps working until that version is enforced.
 
+## 0.32.0 (19 Nov 2026)
+
+Copied from Scheduler_Backend at commit a69f3e9. Adds the self-hosted video stream
+(`GET /v1/playback/sessions/{id}/stream`), `provider` and `watermark_text` on `PlaybackStarted`,
+comment reports and comment moderation for student moderators, and the signed undertaking PDF
+(`GET /v1/me/registrations/{id}/undertaking`).
+
 ## 0.30.0 (17 Nov 2026)
 
 Copied unchanged from Scheduler_Backend at commit b83ee8a. Two optional fields on the sign-in code reply

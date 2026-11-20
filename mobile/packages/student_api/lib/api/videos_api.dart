@@ -306,7 +306,7 @@ class VideosApi {
 
   /// Start playing a video
   ///
-  /// Checks access in this order: linked admission, full fee paid, the course is mine (or the recording is my batch's), access not ended (6 months after the course end), a view left. Then the device (the bound phone, or my one web session) and one open playback at a time. Returns a playback token for this session only, with a moving watermark set by the server and no offline copy. A view is counted once 5% is watched; reopening within 60 minutes of a counted session does not count again. 
+  /// Checks access in this order: linked admission, full fee paid, the course is mine (or the recording is my batch's), access not ended (6 months after the course end), a view left. Then the device (the bound phone, or my one web session) and one open playback at a time. Returns how to play for this session only (see PlaybackStarted: a signed link to RVM's own storage by default, with the watermark text set by the server; or a VdoCipher token). A view is counted once 5% is watched; reopening within 60 minutes of a counted session does not count again. 
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -352,7 +352,7 @@ class VideosApi {
 
   /// Start playing a video
   ///
-  /// Checks access in this order: linked admission, full fee paid, the course is mine (or the recording is my batch's), access not ended (6 months after the course end), a view left. Then the device (the bound phone, or my one web session) and one open playback at a time. Returns a playback token for this session only, with a moving watermark set by the server and no offline copy. A view is counted once 5% is watched; reopening within 60 minutes of a counted session does not count again. 
+  /// Checks access in this order: linked admission, full fee paid, the course is mine (or the recording is my batch's), access not ended (6 months after the course end), a view left. Then the device (the bound phone, or my one web session) and one open playback at a time. Returns how to play for this session only (see PlaybackStarted: a signed link to RVM's own storage by default, with the watermark text set by the server; or a VdoCipher token). A view is counted once 5% is watched; reopening within 60 minutes of a counted session does not count again. 
   ///
   /// Parameters:
   ///
@@ -373,6 +373,78 @@ class VideosApi {
     // FormatException when trying to decode an empty string.
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
       return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PlaybackStarted',) as PlaybackStarted;
+    
+    }
+    return null;
+  }
+
+  /// The video of an open playback, range by range (own storage)
+  ///
+  /// The `stream_url` of PlaybackStarted when `provider` is `self`. No sign-in header (a video element cannot send one): the `t` token is bound to this session and expires with it. Works only while the session is open: once it ends, is replaced or revoked, the answer is 410 `SESSION_ENDED`. Send `Range` as players do; the answer is 206 with `Content-Range`. Never a download: `Content-Disposition: inline`, `Cache-Control: no-store`. The app shows no download button and blocks screen recording on the player screen. 
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [String] t (required):
+  ///
+  /// * [String] range:
+  Future<Response> streamPlaybackWithHttpInfo(String id, String t, { String? range, Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/v1/playback/sessions/{id}/stream'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+      queryParams.addAll(_queryParams('', 't', t));
+
+    if (range != null) {
+      headerParams[r'Range'] = parameterToString(range);
+    }
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// The video of an open playback, range by range (own storage)
+  ///
+  /// The `stream_url` of PlaybackStarted when `provider` is `self`. No sign-in header (a video element cannot send one): the `t` token is bound to this session and expires with it. Works only while the session is open: once it ends, is replaced or revoked, the answer is 410 `SESSION_ENDED`. Send `Range` as players do; the answer is 206 with `Content-Range`. Never a download: `Content-Disposition: inline`, `Cache-Control: no-store`. The app shows no download button and blocks screen recording on the player screen. 
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [String] t (required):
+  ///
+  /// * [String] range:
+  Future<MultipartFile?> streamPlayback(String id, String t, { String? range, Future<void>? abortTrigger, }) async {
+    final response = await streamPlaybackWithHttpInfo(id, t, range: range, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'MultipartFile',) as MultipartFile;
     
     }
     return null;

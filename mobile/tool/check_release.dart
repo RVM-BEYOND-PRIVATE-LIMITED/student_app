@@ -65,6 +65,18 @@ const reviewedExports = <String, String?>{
   // framework only; it shows the same protected session and cannot download
   // or open the media outside the app.
   'com.vdocipher.aegis.cast.internal.CustomExpandedControlsActivity': null,
+  // Razorpay Checkout (the live payment order). The deeplink activity only
+  // receives Razorpay's own `razorpay://com.rvm.rvmstudent` return from a UPI
+  // app; it creates no order, shows no student data, and the app still asks
+  // the server for `paid`, which only the signed webhook sets. A forged
+  // deeplink can at most make the app ask, never make a receipt.
+  'com.razorpay.DeeplinkActivity': null,
+  // Google Play services' sign-in revocation listener, brought in by
+  // Razorpay's Google Pay support. Only the Google Play services signature
+  // holds this permission; it receives account-revocation notices and
+  // carries no student data.
+  'com.google.android.gms.auth.api.signin.RevocationBoundService':
+      'com.google.android.gms.auth.api.signin.permission.REVOCATION_NOTIFICATION',
 };
 
 /// The `<application>` meta-data that records the flavor a build runs as,

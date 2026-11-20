@@ -16,8 +16,25 @@ import 'bloc/home_bloc.dart';
 /// Home (student_app #2, items 4 and 12): the two doors for a student who has
 /// not linked an admission, the status of a linked one, and the two in-app
 /// cards the server sends.
-class HomeTab extends StatelessWidget {
+class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
+
+  @override
+  State<HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<HomeTab> {
+  @override
+  void initState() {
+    super.initState();
+    // The fee and stage are read live by the server. Re-read them when Home
+    // opens, so a payment recorded by the centre does not leave the old
+    // "your course fee still has a balance" line on screen until a restart.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AuthBloc>().add(const AuthAccountRefreshed());
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
