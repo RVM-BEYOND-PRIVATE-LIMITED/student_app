@@ -117,8 +117,6 @@
   "devCrashLog": "Crash log",
   "devCrashLogCount": "{count, plural, =0{No entries} =1{1 entry} other{{count} entries}}",
   "@devCrashLogCount": {
-    "description": "How many crash records are kept on this phone.",
-    "placeholders": {"count": {"type": "int"}}
   },
   "devCrashLogEmpty": "No crash is recorded on this phone.",
   "devCrashLogNote": "Kept on this phone only. Personal data is removed before anything is written.",
@@ -297,8 +295,6 @@
   "@profileContactSms": {"description": "SMS contact switch."},
   "profileContactPush": "App notifications",
   "@profileContactPush": {"description": "Push notification contact switch."},
-  "otpSentPilot": "If this number is on the pilot, your code is on its way to {phone}.",
-  "@otpSentPilot": {"placeholders": {"phone": {"type": "String"}}, "description": "Neutral wording while only pilot numbers get a code."},
   "otpSmsFallback": "If WhatsApp does not deliver it, the same code comes by SMS.",
   "@otpSmsFallback": {"description": "Shown when the automatic SMS fallback is on."}
 }

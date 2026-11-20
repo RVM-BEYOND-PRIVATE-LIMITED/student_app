@@ -274,8 +274,6 @@
   "@profileContactSms": {"description": "SMS contact switch."},
   "profileContactPush": "ऐप सूचनाएँ",
   "@profileContactPush": {"description": "Push notification contact switch."},
-  "otpSentPilot": "अगर यह नंबर पायलट में है, तो आपका कोड {phone} पर आ रहा है।",
-  "@otpSentPilot": {"placeholders": {"phone": {"type": "String"}}, "description": "Neutral wording while only pilot numbers get a code."},
   "otpSmsFallback": "अगर व्हाट्सऐप से नहीं पहुँचे, तो वही कोड एसएमएस से आएगा।",
   "@otpSmsFallback": {"description": "Shown when the automatic SMS fallback is on."}
 }
