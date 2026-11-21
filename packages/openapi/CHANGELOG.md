@@ -10,6 +10,12 @@ Copied from Scheduler_Backend at commit 3528c4b (release #662, live in productio
 
 - 0.35.1: two descriptions quoted (an unquoted comma had split them); no route or reply change.
 
+**One accepted breaking change (from 0.31.0, 17 Nov 2026).** `PlaybackStarted.otp` and `playback_info` may be null
+since recorded videos moved to our own storage (Scheduler_Backend #192: `provider: self` plays `stream_url` and has no
+VdoCipher OTP). It was made in place because no student app build was in students' hands (the app is not on Play yet),
+and the app already plays `provider: self` (#85). The two lines are in `tools/breaking-accepted.txt`, which the
+breaking-change check skips; empty that file once a contract release newer than 0.30.0 is cut.
+
 - 0.35.0 (student_app #89): `GET /v1/me/payment-terms` gives the non-refundable line to show with the tick before
   paying, in the account's language, and its `version`, which is the `text_version` a payment order sends. A new
   text comes with a new version; an order with an older one is refused `ACCEPTANCE_REQUIRED`. `Registration` gains

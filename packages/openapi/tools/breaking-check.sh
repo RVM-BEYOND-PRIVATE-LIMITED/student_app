@@ -38,8 +38,18 @@ cp "$FILE" "$work/rev.yaml"
 npx --yes "$REDOCLY" bundle --ext json "$work/base.yaml" -o "$work/base.json" >/dev/null
 npx --yes "$REDOCLY" bundle --ext json "$work/rev.yaml" -o "$work/rev.json" >/dev/null
 
+# Accepted breaking changes (packages/openapi/tools/breaking-accepted.txt): one line per change, written exactly as
+# oasdiff prints it ("METHOD /path the description"). Only a change made while no app build was in students' hands
+# belongs there, with its reason in CHANGELOG.md; empty the file once a newer contract release is cut.
+ignore=()
+if [ -s packages/openapi/tools/breaking-accepted.txt ]; then
+  cp packages/openapi/tools/breaking-accepted.txt "$work/accepted.txt"
+  ignore=(--err-ignore /w/accepted.txt)
+  echo "Accepted breaking changes: $(grep -c . "$work/accepted.txt") (tools/breaking-accepted.txt)."
+fi
+
 echo "Comparing $FILE with the last released contract ($base_from)."
-if docker run --rm -v "$work:/w" "$OASDIFF" breaking /w/base.json /w/rev.json --fail-on ERR; then
+if docker run --rm -v "$work:/w" "$OASDIFF" breaking /w/base.json /w/rev.json --fail-on ERR "${ignore[@]}"; then
   echo "No breaking change against $base_from."
 else
   echo "::error file=$FILE::A breaking change against $base_from. Add a new path and raise the minimum app version instead (CHANGELOG.md)."
