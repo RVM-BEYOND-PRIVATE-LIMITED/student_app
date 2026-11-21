@@ -79,6 +79,69 @@ class LinkingApi {
     return null;
   }
 
+  /// My earlier admissions, read-only
+  ///
+  /// The student's other admissions on the same admission number, newest first: a course left midway before an add-on admission, an earlier dropout, an old-portal record. Read live; nothing on them can be acted on. Empty for almost everyone. 
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<Response> getAdmissionHistoryWithHttpInfo({ String? xAppVersion, Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/v1/me/admissions/history';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (xAppVersion != null) {
+      headerParams[r'X-App-Version'] = parameterToString(xAppVersion);
+    }
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// My earlier admissions, read-only
+  ///
+  /// The student's other admissions on the same admission number, newest first: a course left midway before an add-on admission, an earlier dropout, an old-portal record. Read live; nothing on them can be acted on. Empty for almost everyone. 
+  ///
+  /// Parameters:
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<AdmissionHistory?> getAdmissionHistory({ String? xAppVersion, Future<void>? abortTrigger, }) async {
+    final response = await getAdmissionHistoryWithHttpInfo(xAppVersion: xAppVersion, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'AdmissionHistory',) as AdmissionHistory;
+    
+    }
+    return null;
+  }
+
   /// My fees, plan and fee hold
   ///
   /// Read live from the centre's records; nothing is stored. `plan_pending` is true until the centre enters the instalment plan. `fee_hold.on_hold` true means classes are closed until the overdue instalment is paid (the app shows the pay screen); fees and payment stay open. 

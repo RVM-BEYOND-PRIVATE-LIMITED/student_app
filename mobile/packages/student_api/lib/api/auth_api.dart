@@ -298,7 +298,7 @@ class AuthApi {
 
   /// Sign in with the code
   ///
-  /// Finds or creates the account, binds this device and opens a session. The app keeps the refresh token in secure storage. The web version gets the refresh token as an httpOnly cookie instead, and `refresh_token` is absent from the reply.  A linked student signing in on a second phone while the first is still active gets 409 `DEVICE_CHANGE_NEEDS_CENTRE`: the centre approves the new phone. 
+  /// Finds or creates the account, binds this device and opens a session. The app keeps the refresh token in secure storage. The web version gets the refresh token as an httpOnly cookie instead, and `refresh_token` is absent from the reply.  A linked student signing in on a second phone while the first is still active gets 409 `DEVICE_CHANGE_NEEDS_CENTRE`: the centre approves the new phone.  0.33.0 (#639): on Android, `device.integrity_token` is checked while Play Integrity is enforced; a phone that fails it gets 409 `DEVICE_INTEGRITY_FAILED` (`details.reason`) and nothing is signed in. 
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -344,7 +344,7 @@ class AuthApi {
 
   /// Sign in with the code
   ///
-  /// Finds or creates the account, binds this device and opens a session. The app keeps the refresh token in secure storage. The web version gets the refresh token as an httpOnly cookie instead, and `refresh_token` is absent from the reply.  A linked student signing in on a second phone while the first is still active gets 409 `DEVICE_CHANGE_NEEDS_CENTRE`: the centre approves the new phone. 
+  /// Finds or creates the account, binds this device and opens a session. The app keeps the refresh token in secure storage. The web version gets the refresh token as an httpOnly cookie instead, and `refresh_token` is absent from the reply.  A linked student signing in on a second phone while the first is still active gets 409 `DEVICE_CHANGE_NEEDS_CENTRE`: the centre approves the new phone.  0.33.0 (#639): on Android, `device.integrity_token` is checked while Play Integrity is enforced; a phone that fails it gets 409 `DEVICE_INTEGRITY_FAILED` (`details.reason`) and nothing is signed in. 
   ///
   /// Parameters:
   ///

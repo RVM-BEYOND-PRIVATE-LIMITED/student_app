@@ -28,6 +28,7 @@ class Complaint {
     required this.canReopen,
     required this.reopenCount,
     required this.lastActivityAt,
+    this.earlierCourse,
   });
 
   String id;
@@ -66,6 +67,15 @@ class Complaint {
 
   DateTime lastActivityAt;
 
+  /// On the list only (0.34.0): raised under an earlier admission, the course the student left midway.
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  bool? earlierCourse;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is Complaint &&
     other.id == id &&
@@ -82,7 +92,8 @@ class Complaint {
     other.reopenUntil == reopenUntil &&
     other.canReopen == canReopen &&
     other.reopenCount == reopenCount &&
-    other.lastActivityAt == lastActivityAt;
+    other.lastActivityAt == lastActivityAt &&
+    other.earlierCourse == earlierCourse;
 
   @override
   int get hashCode =>
@@ -101,10 +112,11 @@ class Complaint {
     (reopenUntil == null ? 0 : reopenUntil!.hashCode) +
     (canReopen.hashCode) +
     (reopenCount.hashCode) +
-    (lastActivityAt.hashCode);
+    (lastActivityAt.hashCode) +
+    (earlierCourse == null ? 0 : earlierCourse!.hashCode);
 
   @override
-  String toString() => 'Complaint[id=$id, ref=$ref, category=$category, categoryName=$categoryName, status=$status, description=$description, createdAt=$createdAt, replyDueAt=$replyDueAt, resolveDueAt=$resolveDueAt, answered=$answered, resolvedAt=$resolvedAt, reopenUntil=$reopenUntil, canReopen=$canReopen, reopenCount=$reopenCount, lastActivityAt=$lastActivityAt]';
+  String toString() => 'Complaint[id=$id, ref=$ref, category=$category, categoryName=$categoryName, status=$status, description=$description, createdAt=$createdAt, replyDueAt=$replyDueAt, resolveDueAt=$resolveDueAt, answered=$answered, resolvedAt=$resolvedAt, reopenUntil=$reopenUntil, canReopen=$canReopen, reopenCount=$reopenCount, lastActivityAt=$lastActivityAt, earlierCourse=$earlierCourse]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -131,6 +143,11 @@ class Complaint {
       json[r'can_reopen'] = this.canReopen;
       json[r'reopen_count'] = this.reopenCount;
       json[r'last_activity_at'] = this.lastActivityAt.toUtc().toIso8601String();
+    if (this.earlierCourse != null) {
+      json[r'earlier_course'] = this.earlierCourse;
+    } else {
+      json[r'earlier_course'] = null;
+    }
     return json;
   }
 
@@ -192,6 +209,7 @@ class Complaint {
         canReopen: mapValueOfType<bool>(json, r'can_reopen')!,
         reopenCount: mapValueOfType<int>(json, r'reopen_count')!,
         lastActivityAt: mapDateTime(json, r'last_activity_at', r'')!,
+        earlierCourse: mapValueOfType<bool>(json, r'earlier_course'),
       );
     }
     return null;
