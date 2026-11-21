@@ -107,9 +107,9 @@ class MemoryCrashLogStore implements CrashLogStore {
 /// [maxRecords] kept.
 ///
 /// The folder is in the app's own storage, which other apps cannot read, and
-/// the backup rules keep it out of backups. Nothing here sends it anywhere:
-/// whether crash reports may leave the phone is student_app #12, which waits
-/// for the owner's decision.
+/// the backup rules keep it out of backups. This store never sends anything:
+/// release builds send a redacted copy to Firebase Crashlytics separately
+/// (student_app #75), and debug builds send nothing.
 class FileCrashLogStore implements CrashLogStore {
   FileCrashLogStore(this._directory, {this.maxRecords = CrashLog.maxRecords});
 
@@ -182,9 +182,9 @@ class FileCrashLogStore implements CrashLogStore {
 ///
 /// Every error passes through [StudentRedact] before anything is kept, so no
 /// phone number, OTP, token or name lands in the log. Nothing is printed in a
-/// release build, so the device log stays clean too. Sending reports off the
-/// phone (Crashlytics) is student_app #12 and needs the owner's OK first;
-/// until then the records stay here and the Developer menu shows them.
+/// release build, so the device log stays clean too. Release builds also send
+/// a redacted copy to Firebase Crashlytics (student_app #75); debug builds
+/// send nothing. The Developer menu shows the on-device records.
 abstract final class CrashLog {
   static const maxRecords = 20;
   static const _maxSummary = 1000;

@@ -245,6 +245,85 @@ class CommunityApi {
     return null;
   }
 
+  /// Hide a comment (moderators)
+  ///
+  /// #294. Upholds the open reports on the comment.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [String] idempotencyKey (required):
+  ///   A new random value for each action (a UUID is fine), reused only to retry that same action.
+  ///
+  /// * [CommunityHide] communityHide (required):
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<Response> hideCommunityCommentWithHttpInfo(String id, String idempotencyKey, CommunityHide communityHide, { String? xAppVersion, Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/v1/community/mod/comments/{id}/hide'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = communityHide;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    headerParams[r'Idempotency-Key'] = parameterToString(idempotencyKey);
+    if (xAppVersion != null) {
+      headerParams[r'X-App-Version'] = parameterToString(xAppVersion);
+    }
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Hide a comment (moderators)
+  ///
+  /// #294. Upholds the open reports on the comment.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [String] idempotencyKey (required):
+  ///   A new random value for each action (a UUID is fine), reused only to retry that same action.
+  ///
+  /// * [CommunityHide] communityHide (required):
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<CommunityModerated?> hideCommunityComment(String id, String idempotencyKey, CommunityHide communityHide, { String? xAppVersion, Future<void>? abortTrigger, }) async {
+    final response = await hideCommunityCommentWithHttpInfo(id, idempotencyKey, communityHide, xAppVersion: xAppVersion, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'CommunityModerated',) as CommunityModerated;
+    
+    }
+    return null;
+  }
+
   /// Hide a post (moderators)
   ///
   /// Note: This method returns the HTTP [Response].
@@ -315,6 +394,69 @@ class CommunityApi {
     // FormatException when trying to decode an empty string.
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
       return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'CommunityModerated',) as CommunityModerated;
+    
+    }
+    return null;
+  }
+
+  /// Comment review queue (student moderators)
+  ///
+  /// #294. Comments with open reports in the groups I moderate: the count and the reasons, never who reported. A non-moderator gets 403 `NOT_MODERATOR`. 
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<Response> listCommunityCommentReportsWithHttpInfo({ String? xAppVersion, Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/v1/community/mod/comment-reports';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (xAppVersion != null) {
+      headerParams[r'X-App-Version'] = parameterToString(xAppVersion);
+    }
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Comment review queue (student moderators)
+  ///
+  /// #294. Comments with open reports in the groups I moderate: the count and the reasons, never who reported. A non-moderator gets 403 `NOT_MODERATOR`. 
+  ///
+  /// Parameters:
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<CommunityCommentReportQueue?> listCommunityCommentReports({ String? xAppVersion, Future<void>? abortTrigger, }) async {
+    final response = await listCommunityCommentReportsWithHttpInfo(xAppVersion: xAppVersion, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'CommunityCommentReportQueue',) as CommunityCommentReportQueue;
     
     }
     return null;
@@ -661,6 +803,85 @@ class CommunityApi {
     return null;
   }
 
+  /// Report a comment
+  ///
+  /// #294. Off until the community setting `comment_reports` is on (404 `NOT_FOUND` meanwhile). The comment is hidden at once for everyone but the moderators and goes to review; one report per member per comment, sharing the 5-a-day limit with post reports. Moderators never see who reported. With `restored_stay_visible` on, a comment a moderator restored stays visible (`hidden: false`) and the report still goes to review. 
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [String] idempotencyKey (required):
+  ///   A new random value for each action (a UUID is fine), reused only to retry that same action.
+  ///
+  /// * [CommunityReportCreate] communityReportCreate (required):
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<Response> reportCommunityCommentWithHttpInfo(String id, String idempotencyKey, CommunityReportCreate communityReportCreate, { String? xAppVersion, Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/v1/community/comments/{id}/report'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = communityReportCreate;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    headerParams[r'Idempotency-Key'] = parameterToString(idempotencyKey);
+    if (xAppVersion != null) {
+      headerParams[r'X-App-Version'] = parameterToString(xAppVersion);
+    }
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Report a comment
+  ///
+  /// #294. Off until the community setting `comment_reports` is on (404 `NOT_FOUND` meanwhile). The comment is hidden at once for everyone but the moderators and goes to review; one report per member per comment, sharing the 5-a-day limit with post reports. Moderators never see who reported. With `restored_stay_visible` on, a comment a moderator restored stays visible (`hidden: false`) and the report still goes to review. 
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [String] idempotencyKey (required):
+  ///   A new random value for each action (a UUID is fine), reused only to retry that same action.
+  ///
+  /// * [CommunityReportCreate] communityReportCreate (required):
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<CommunityReported?> reportCommunityComment(String id, String idempotencyKey, CommunityReportCreate communityReportCreate, { String? xAppVersion, Future<void>? abortTrigger, }) async {
+    final response = await reportCommunityCommentWithHttpInfo(id, idempotencyKey, communityReportCreate, xAppVersion: xAppVersion, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'CommunityReported',) as CommunityReported;
+    
+    }
+    return null;
+  }
+
   /// Report a post
   ///
   /// The post is hidden at once for everyone but the moderators and goes to review. One report per member per post, 5 a day. Moderators never see who reported. 
@@ -735,6 +956,85 @@ class CommunityApi {
     // FormatException when trying to decode an empty string.
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
       return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'CommunityReported',) as CommunityReported;
+    
+    }
+    return null;
+  }
+
+  /// Restore a hidden comment (moderators)
+  ///
+  /// #294. Its open reports become restored.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [String] idempotencyKey (required):
+  ///   A new random value for each action (a UUID is fine), reused only to retry that same action.
+  ///
+  /// * [CommunityRestore] communityRestore (required):
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<Response> restoreCommunityCommentWithHttpInfo(String id, String idempotencyKey, CommunityRestore communityRestore, { String? xAppVersion, Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/v1/community/mod/comments/{id}/restore'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = communityRestore;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    headerParams[r'Idempotency-Key'] = parameterToString(idempotencyKey);
+    if (xAppVersion != null) {
+      headerParams[r'X-App-Version'] = parameterToString(xAppVersion);
+    }
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Restore a hidden comment (moderators)
+  ///
+  /// #294. Its open reports become restored.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [String] idempotencyKey (required):
+  ///   A new random value for each action (a UUID is fine), reused only to retry that same action.
+  ///
+  /// * [CommunityRestore] communityRestore (required):
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<CommunityModerated?> restoreCommunityComment(String id, String idempotencyKey, CommunityRestore communityRestore, { String? xAppVersion, Future<void>? abortTrigger, }) async {
+    final response = await restoreCommunityCommentWithHttpInfo(id, idempotencyKey, communityRestore, xAppVersion: xAppVersion, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'CommunityModerated',) as CommunityModerated;
     
     }
     return null;

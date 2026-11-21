@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'core/app_info.dart';
 import 'core/crash/crash_log.dart';
 import 'core/env/student_env.dart';
+import 'core/push/notification_routes.dart';
+import 'core/push/push_service.dart';
 import 'core/security/device_hints.dart';
 import 'core/session/student_session.dart';
 import 'features/auth/bloc/auth_bloc.dart';
@@ -40,6 +42,8 @@ class _StudentAppState extends State<StudentApp> {
   );
 
   late final AppLifecycleListener _lifecycle;
+  final GlobalKey<ScaffoldMessengerState> _messengerKey =
+      GlobalKey<ScaffoldMessengerState>();
 
   @override
   void initState() {
@@ -47,6 +51,12 @@ class _StudentAppState extends State<StudentApp> {
     // Restore the session and read the account (student_app #2). It runs
     // beside the launch checks: neither waits on the other.
     _auth.add(const AuthStarted());
+    PushService.instance.openedRoute.addListener(_onNotificationRoute);
+    PushService.instance.foregroundNotice.addListener(_onForegroundNotice);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _onNotificationRoute();
+      _onForegroundNotice();
+    });
     // In the background the offline banner's re-checks stop; back in the
     // foreground it checks again at once and starts its back-off afresh.
     // Hidden always comes before paused; both are sent, and the second one
@@ -66,9 +76,63 @@ class _StudentAppState extends State<StudentApp> {
 
   @override
   void dispose() {
+    PushService.instance.openedRoute.removeListener(_onNotificationRoute);
+    PushService.instance.foregroundNotice.removeListener(_onForegroundNotice);
     _lifecycle.dispose();
     _router.dispose();
     super.dispose();
+  }
+
+  /// Shows a notice that arrived while the app was open. It is an in-app
+  /// banner, not a second system notification, and its Open action follows
+  /// the same guarded route mapping as a tapped push.
+  void _onForegroundNotice() {
+    final message = PushService.instance.foregroundNotice.value;
+    if (message == null) return;
+    PushService.instance.foregroundNotice.value = null;
+    final title = (message.notification?.title ?? '').trim();
+    final body = (message.notification?.body ?? '').trim();
+    if (title.isEmpty && body.isEmpty) return;
+    final messenger = _messengerKey.currentState;
+    if (messenger == null) return;
+    final context = _messengerKey.currentContext;
+    final route = NotificationRoutes.forMessage(message);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            [title, body].where((line) => line.isNotEmpty).join('\n'),
+          ),
+          duration: const Duration(seconds: 8),
+          action: route == null
+              ? null
+              : SnackBarAction(
+                  label: context?.l10n.noticeOpen ?? 'Open',
+                  onPressed: () {
+                    PushService.instance.openedRoute.value = route;
+                  },
+                ),
+        ),
+      );
+  }
+
+  /// Opens the screen a notification asked for, but only for a signed-in,
+  /// onboarded student. A tap while signed out waits until sign-in finishes.
+  void _onNotificationRoute() {
+    final route = PushService.instance.openedRoute.value;
+    if (route == null) return;
+    final account = _auth.state.account;
+    if (!_auth.state.signedIn ||
+        account == null ||
+        !account.onboardingComplete) {
+      return;
+    }
+    PushService.instance.openedRoute.value = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _router.go(route);
+    });
   }
 
   @override
@@ -106,8 +170,10 @@ class _StudentAppState extends State<StudentApp> {
               listener: (context, state) {
                 _router.refresh();
                 if (state.signedIn) {
-                  // Sign-in and a restored session: read the theme.
+                  // Sign-in and a restored session: read the theme, then a
+                  // notification tap that waited for this sign-in.
                   _theme.refreshFromServer();
+                  _onNotificationRoute();
                 } else if (state.status == AuthStatus.signedOut) {
                   _theme.signOut();
                 }
@@ -130,9 +196,9 @@ class _StudentAppState extends State<StudentApp> {
                 themeMode: _theme.mode,
                 locale: state.language.locale,
                 supportedLocales: AppLocalizations.supportedLocales,
-                localizationsDelegates:
-                    AppLocalizations.localizationsDelegates,
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
                 routerConfig: _router,
+                scaffoldMessengerKey: _messengerKey,
                 builder: (context, child) =>
                     OfflineBannerHost(child: child ?? const SizedBox.shrink()),
               ),

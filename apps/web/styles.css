@@ -37,3 +37,14 @@ h1 { font-size: 24px; } h2 { font-size: 18px; } h3 { font-size: 15px; }
 ul { margin: 0; padding-left: 18px; }
 .muted-text { color: var(--student-fg2); font-size: 14px; }
 .danger { color: var(--student-danger); }
+
+/* #85 — RVM's own recording. The watermark moves; controls stay ordinary,
+   with no download, remote playback or picture-in-picture. */
+.player-wrap { position: relative; background: #000; border-radius: 12px; overflow: hidden; }
+.player-wrap video { display: block; width: 100%; height: auto; }
+.watermark {
+  position: absolute; top: 12px; left: 12px; pointer-events: none;
+  color: rgba(255, 255, 255, .72); font-size: 12px; font-weight: 600;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .6);
+  transition: top .7s ease, left .7s ease, right .7s ease, bottom .7s ease;
+}

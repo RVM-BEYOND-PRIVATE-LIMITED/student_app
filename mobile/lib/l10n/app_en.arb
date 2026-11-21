@@ -59,6 +59,14 @@
   "errorTooManyBody": "Please wait a few minutes, then try again.",
   "errorServerTitle": "Server problem",
   "errorServerBody": "The server had a problem. Try again in a moment.",
+  "errorNotOpenTitle": "Not open yet",
+  "errorNotOpenBody": "Your centre opens this for pilot students. Check again later.",
+  "errorStartingTitle": "Starting up",
+  "errorStartingBody": "This part is starting. Try again in a moment.",
+  "errorNotLinkedTitle": "Link your account",
+  "errorNotLinkedBody": "Link your account to your admission to see this.",
+  "errorNotEligibleTitle": "Not available yet",
+  "errorNotEligibleBody": "This opens once you are a registered student.",
   "errorRequestTitle": "Request not completed",
   "errorRequestBody": "The server could not complete this request.",
   "errorParseTitle": "Unexpected reply",
@@ -109,8 +117,6 @@
   "devCrashLog": "Crash log",
   "devCrashLogCount": "{count, plural, =0{No entries} =1{1 entry} other{{count} entries}}",
   "@devCrashLogCount": {
-    "description": "How many crash records are kept on this phone.",
-    "placeholders": {"count": {"type": "int"}}
   },
   "devCrashLogEmpty": "No crash is recorded on this phone.",
   "devCrashLogNote": "Kept on this phone only. Personal data is removed before anything is written.",
@@ -254,6 +260,10 @@
   "profileDeleteSent": "Your request has gone to your centre. Nothing is deleted automatically.",
   "profileSignOut": "Sign out",
   "profileSignOutNote": "This signs you out on this phone. Your account stays at your centre.",
+  "profileSignOutConfirmTitle": "Sign out of this phone?",
+  "profileSignOutConfirmBody": "You will need your phone number and a code to sign in again. Your account stays at your centre.",
+  "profileSignOutConfirmAction": "Sign out",
+  "profileSignOutConfirmCancel": "Stay signed in",
 
   "alreadyPaidTitle": "I have already paid",
   "alreadyPaidFound": "We found your admission",
@@ -272,5 +282,19 @@
   "alreadyPaidRequested": "Your request is with your centre. It will link the admission and you can check again.",
 
   "joinHoldingTitle": "Joining opens soon",
-  "joinHoldingBody": "The joining flow arrives in a later update. Until then, call a centre to talk about a course."
+  "joinHoldingBody": "The joining flow arrives in a later update. Until then, call a centre to talk about a course.",
+  "noticeOpen": "Open",
+  "@noticeOpen": {"description": "Action on an in-app notice, to open its screen."},
+  "profileContactTitle": "Contact preferences",
+  "@profileContactTitle": {"description": "Heading for the editable contact channels."},
+  "profileContactNote": "Your centre uses these to reach you.",
+  "@profileContactNote": {"description": "Note under the contact preferences."},
+  "profileContactWhatsapp": "WhatsApp",
+  "@profileContactWhatsapp": {"description": "WhatsApp contact switch."},
+  "profileContactSms": "SMS",
+  "@profileContactSms": {"description": "SMS contact switch."},
+  "profileContactPush": "App notifications",
+  "@profileContactPush": {"description": "Push notification contact switch."},
+  "otpSmsFallback": "If WhatsApp does not deliver it, the same code comes by SMS.",
+  "@otpSmsFallback": {"description": "Shown when the automatic SMS fallback is on."}
 }

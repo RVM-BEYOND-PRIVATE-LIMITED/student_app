@@ -27,6 +27,9 @@ class ProfileTab extends StatefulWidget {
 
 class _ProfileTabState extends State<ProfileTab> {
   late Future<List<ConsentRecord>> _consents;
+  late Future<Map<String, dynamic>> _profile = getIt<StudentApi>().getJson(
+    '/v1/me/profile',
+  );
   bool _busy = false;
 
   @override
@@ -36,7 +39,25 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   void _reload() {
-    setState(() => _consents = getIt<StudentApi>().consents());
+    setState(() {
+      _consents = getIt<StudentApi>().consents();
+      _profile = getIt<StudentApi>().getJson('/v1/me/profile');
+    });
+  }
+
+  Future<void> _setContactPreference(String key, bool value) async {
+    try {
+      await getIt<StudentApi>().patchJson('/v1/me/profile', {
+        'contact_preferences': {key: value},
+      });
+      if (!mounted) return;
+      setState(() {
+        _profile = getIt<StudentApi>().getJson('/v1/me/profile');
+      });
+    } catch (error) {
+      if (!mounted) return;
+      showFailureSnackBar(context, error);
+    }
   }
 
   @override
@@ -70,6 +91,52 @@ class _ProfileTabState extends State<ProfileTab> {
           ],
           selected: {language},
           onSelectionChanged: (selection) => _setLanguage(selection.first),
+        ),
+        const SizedBox(height: RvmSpacing.lg),
+        Text(l10n.profileContactTitle, style: text.titleSmall),
+        Text(
+          l10n.profileContactNote,
+          style: text.bodySmall?.copyWith(color: context.palette.fg3),
+        ),
+        FutureBuilder<Map<String, dynamic>>(
+          future: _profile,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SkeletonCard();
+            }
+            if (snapshot.hasError) {
+              final error = snapshot.error;
+              return StudentErrorState(
+                failure: error is Failure ? error : const UnknownFailure(),
+                onRetry: _reload,
+              );
+            }
+            final prefs = asMap(asMap(snapshot.data)['contact_preferences']);
+            bool on(String key) => prefs[key] != false;
+            return Column(
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.profileContactWhatsapp),
+                  value: on('whatsapp'),
+                  onChanged: (value) =>
+                      _setContactPreference('whatsapp', value),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.profileContactSms),
+                  value: on('sms'),
+                  onChanged: (value) => _setContactPreference('sms', value),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.profileContactPush),
+                  value: on('push'),
+                  onChanged: (value) => _setContactPreference('push', value),
+                ),
+              ],
+            );
+          },
         ),
         if (theme.open) ...[
           const SizedBox(height: RvmSpacing.lg),
@@ -157,46 +224,49 @@ class _ProfileTabState extends State<ProfileTab> {
       builder: (sheetContext) => SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            RvmSpacing.lg,
-            0,
-            RvmSpacing.lg,
-            RvmSpacing.lg,
-          ),
-          child: ListenableBuilder(
-            listenable: theme,
-            builder: (context, _) => Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(l10n.appearanceTitle, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: RvmSpacing.sm),
-                RadioGroup<ThemeChoice>(
-                  groupValue: theme.choice,
-                  onChanged: (value) {
-                    if (value != null) theme.select(value);
-                  },
-                  child: Column(
-                    children: [
-                      for (final choice in ThemeChoice.values)
-                        RadioListTile<ThemeChoice>(
-                          value: choice,
-                          title: Text(_themeName(choice, l10n)),
-                          subtitle: choice == ThemeChoice.system
-                              ? Text(l10n.appearanceSystemNote)
-                              : null,
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: RvmSpacing.sm),
-                FilledButton(
-                  onPressed: () => Navigator.of(sheetContext).pop(),
-                  child: Text(l10n.appearanceDone),
-                ),
-              ],
+            padding: const EdgeInsets.fromLTRB(
+              RvmSpacing.lg,
+              0,
+              RvmSpacing.lg,
+              RvmSpacing.lg,
             ),
-          ),
+            child: ListenableBuilder(
+              listenable: theme,
+              builder: (context, _) => Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    l10n.appearanceTitle,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: RvmSpacing.sm),
+                  RadioGroup<ThemeChoice>(
+                    groupValue: theme.choice,
+                    onChanged: (value) {
+                      if (value != null) theme.select(value);
+                    },
+                    child: Column(
+                      children: [
+                        for (final choice in ThemeChoice.values)
+                          RadioListTile<ThemeChoice>(
+                            value: choice,
+                            title: Text(_themeName(choice, l10n)),
+                            subtitle: choice == ThemeChoice.system
+                                ? Text(l10n.appearanceSystemNote)
+                                : null,
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: RvmSpacing.sm),
+                  FilledButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                    child: Text(l10n.appearanceDone),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -237,16 +307,17 @@ class _ProfileTabState extends State<ProfileTab> {
         orElse: () => record,
       );
       await getIt<StudentApi>().setConsents(
-        shareProfile:
-            share.purpose == 'share_profile' ? false : share.granted,
-        marketingStory:
-            marketing.purpose == 'marketing_story' ? false : marketing.granted,
+        shareProfile: share.purpose == 'share_profile' ? false : share.granted,
+        marketingStory: marketing.purpose == 'marketing_story'
+            ? false
+            : marketing.granted,
         shareProfileVersion: share.textVersion ?? 1,
         marketingStoryVersion: marketing.textVersion ?? 1,
       );
       _reload();
-    } catch (_) {
-      // The row keeps its state; the student can try again.
+    } catch (error) {
+      if (!mounted) return;
+      showFailureSnackBar(context, error);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -266,27 +337,59 @@ class _ProfileTabState extends State<ProfileTab> {
           decoration: InputDecoration(hintText: l10n.profileDeleteReason),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.profileDeleteCancel)),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(l10n.profileDeleteSend)),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.profileDeleteCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.profileDeleteSend),
+          ),
         ],
       ),
     );
     if (ok != true) return;
     try {
-      await getIt<StudentApi>().postJson(
-        '/v1/me/deletion-request',
-        {'reason': reason.text.trim()},
-      );
+      await getIt<StudentApi>().postJson('/v1/me/deletion-request', {
+        'reason': reason.text.trim(),
+      });
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.profileDeleteSent)),
-      );
-    } catch (_) {
-      // The student can try again.
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.profileDeleteSent)));
+    } catch (error) {
+      if (!mounted) return;
+      final failure = error is Failure ? error : const UnknownFailure();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(failureLine(failure, l10n))));
     }
   }
 
   Future<void> _signOut() async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.profileSignOutConfirmTitle),
+        content: Text(l10n.profileSignOutConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.profileSignOutConfirmCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: context.palette.danger,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            ),
+            child: Text(l10n.profileSignOutConfirmAction),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     await clearCampusCookies();
     if (!mounted) return;
     context.read<AuthBloc>().add(const AuthSignOutRequested());

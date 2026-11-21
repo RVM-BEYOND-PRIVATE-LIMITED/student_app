@@ -48,26 +48,54 @@ class _AlreadyPaidScreenState extends State<AlreadyPaidScreen> {
     super.dispose();
   }
 
+  /// The linked admission, or null when this account is not linked yet.
+  /// Any other refusal is rethrown, so the screen shows its real failure.
+  Future<Admission?> _admissionIfLinked() async {
+    try {
+      return await getIt<StudentApi>().admission();
+    } on Failure catch (failure) {
+      if (failure.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
+  Future<void> _showAdmission(Admission admission, StudentAccount? account) async {
+    if (!mounted) return;
+    if (account != null) {
+      context.read<AuthBloc>().add(AuthAccountUpdated(account));
+    }
+    setState(() {
+      _admission = admission;
+      _failure = null;
+      _loading = false;
+    });
+  }
+
   Future<void> _check() async {
     setState(() {
       _loading = true;
       _failure = null;
       _requestMessage = null;
     });
+    final api = getIt<StudentApi>();
     try {
-      final result = await getIt<StudentApi>().linkAutomatically();
-      if (!mounted) return;
-      if (result.state == LinkResultState.linked) {
-        context.read<AuthBloc>().add(AuthAccountUpdated(result.account));
-        final admission = await getIt<StudentApi>().admission();
-        if (!mounted) return;
-        setState(() {
-          _admission = admission;
-          _loading = false;
-        });
+      // An account already linked at sign-in (or by a previous tap, or by the
+      // centre) must show its admission at once. Before this, link/auto
+      // answered 409 ALREADY_LINKED and the screen showed "Request not
+      // completed", even though the admission was there to read.
+      final already = await _admissionIfLinked();
+      if (already != null) {
+        await _showAdmission(already, null);
         return;
       }
-      final branches = await getIt<StudentApi>().branches();
+
+      final result = await api.linkAutomatically();
+      if (result.state == LinkResultState.linked) {
+        final admission = await api.admission();
+        await _showAdmission(admission, result.account);
+        return;
+      }
+      final branches = await api.branches();
       if (!mounted) return;
       setState(() {
         _branches = branches;
@@ -75,6 +103,22 @@ class _AlreadyPaidScreenState extends State<AlreadyPaidScreen> {
         _loading = false;
       });
     } on Failure catch (failure) {
+      // A race or an older server can still answer 409 ALREADY_LINKED; the
+      // admission is the right screen in that case, never an error.
+      if (failure.statusCode == 409 && failure.code == 'ALREADY_LINKED') {
+        try {
+          final admission = await api.admission();
+          await _showAdmission(admission, null);
+          return;
+        } on Failure catch (again) {
+          if (!mounted) return;
+          setState(() {
+            _failure = again;
+            _loading = false;
+          });
+          return;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _failure = failure;

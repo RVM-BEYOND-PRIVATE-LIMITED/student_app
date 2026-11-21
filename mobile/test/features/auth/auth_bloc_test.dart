@@ -71,6 +71,39 @@ void main() {
     expect(adapter.seen, isEmpty);
   });
 
+  test('a refresh re-reads the account without leaving the signed-in shell', () async {
+    final paid = {
+      ..._me,
+      'stage': 'fully_paid',
+      'fee_fully_paid': true,
+    };
+    var calls = 0;
+    final adapter = ScriptedAdapter((_, _) => jsonReply(200, ++calls == 1 ? _me : paid));
+    final store = FakeSecureStore({
+      StudentSession.accessTokenKey: 'access-0',
+      StudentSession.refreshTokenKey: 'refresh-0',
+    });
+    final bloc = AuthBloc(
+      api: _api(adapter),
+      session: StudentSession(store),
+      appVersion: '0.1.0',
+    );
+    addTearDown(bloc.close);
+
+    bloc.add(const AuthStarted());
+    await bloc.stream.firstWhere((s) => s.status == AuthStatus.signedIn);
+    expect(bloc.state.account?.feeFullyPaid, isFalse);
+
+    final refreshed = bloc.stream.firstWhere(
+      (s) => s.account?.feeFullyPaid == true,
+    );
+    bloc.add(const AuthAccountRefreshed());
+    final state = await refreshed;
+    expect(state.status, AuthStatus.signedIn);
+    expect(adapter.seen.length, 2);
+    expect(adapter.seen.last.uri.path, StudentApi.mePath);
+  });
+
   test('a session is restored with the account', () async {
     final adapter = ScriptedAdapter((_, _) => jsonReply(200, _me));
     final store = FakeSecureStore({

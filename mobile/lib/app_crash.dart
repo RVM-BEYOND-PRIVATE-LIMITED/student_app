@@ -5,11 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'core/crash/crash_log.dart';
+import 'core/redact/student_redact.dart';
 import 'firebase_bootstrap.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'theme/student_tokens.dart';
 
-/// Sends every error to Firebase Crashlytics if available.
+/// Sends every error to Firebase Crashlytics in release builds, if available.
 abstract final class CrashReporter {
   static bool _available = false;
 
@@ -17,41 +18,39 @@ abstract final class CrashReporter {
   static bool get available => _available;
 
   static Future<void> init() async {
+    // student_app #75: crash reports leave the phone from release builds
+    // only. Debug builds keep the on-device log and send nothing.
+    if (!kReleaseMode) {
+      _available = false;
+      return;
+    }
     try {
       await ensureFirebase();
       await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
       _available = true;
-      if (kDebugMode) {
-        debugPrint('Firebase Crashlytics initialised successfully.');
-      }
-    } catch (e) {
+    } catch (_) {
       _available = false;
-      if (kDebugMode) {
-        debugPrint(
-          'Firebase Crashlytics unavailable ($e), falling back to local-only logging.',
-        );
-      }
     }
   }
 
   static void note(String key, String value) {
     if (!_available) return;
     try {
-      FirebaseCrashlytics.instance.setCustomKey(key, value);
-    } catch (_) {}
-  }
-
-  static void setUserIdentifier(String identifier) {
-    if (!_available) return;
-    try {
-      FirebaseCrashlytics.instance.setUserIdentifier(identifier);
+      FirebaseCrashlytics.instance.setCustomKey(key, StudentRedact.text(value));
     } catch (_) {}
   }
 
   static Future<void> recordFlutterError(FlutterErrorDetails details) async {
     if (!_available) return;
     try {
-      await FirebaseCrashlytics.instance.recordFlutterError(details);
+      await FirebaseCrashlytics.instance.recordError(
+        StudentRedact.text('${details.exception}'),
+        details.stack,
+        reason: details.context == null
+            ? null
+            : StudentRedact.text('${details.context}'),
+        printDetails: false,
+      );
     } catch (_) {}
   }
 
@@ -64,9 +63,9 @@ abstract final class CrashReporter {
     if (!_available) return;
     try {
       await FirebaseCrashlytics.instance.recordError(
-        error,
+        StudentRedact.text('$error'),
         stack,
-        reason: reason,
+        reason: reason == null ? null : StudentRedact.text(reason),
         fatal: fatal,
         printDetails: false,
       );

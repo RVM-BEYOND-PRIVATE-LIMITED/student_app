@@ -18,7 +18,7 @@ class PaymentsApi {
 
   /// Start a payment
   ///
-  /// The server decides every amount: a joining payment from Rs 1,000 to the course fee; an instalment is the balance due up to `due_date` (any amount sent is ignored); `balance` is everything still due. The non-refundable tick of the current text version is required. Until payments go live the order is a dry run: `mode: dry_run` and `checkout: null`, and no money can be taken. A live order's `checkout` opens Razorpay; only the signed webhook makes the receipt. 
+  /// The server decides every amount: a joining payment from Rs 1,000 to the course fee; an instalment is the balance due up to `due_date` (any amount sent is ignored); `balance` is everything still due. The non-refundable tick of the current text version is required: `text_version` is the `version` of `GET /v1/me/payment-terms`. The joining limits, with any referral discount already taken off, are the registration's `joining_payment`. Until payments go live the order is a dry run: `mode: dry_run` and `checkout: null`, and no money can be taken. A live order's `checkout` opens Razorpay; only the signed webhook makes the receipt. 
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -64,7 +64,7 @@ class PaymentsApi {
 
   /// Start a payment
   ///
-  /// The server decides every amount: a joining payment from Rs 1,000 to the course fee; an instalment is the balance due up to `due_date` (any amount sent is ignored); `balance` is everything still due. The non-refundable tick of the current text version is required. Until payments go live the order is a dry run: `mode: dry_run` and `checkout: null`, and no money can be taken. A live order's `checkout` opens Razorpay; only the signed webhook makes the receipt. 
+  /// The server decides every amount: a joining payment from Rs 1,000 to the course fee; an instalment is the balance due up to `due_date` (any amount sent is ignored); `balance` is everything still due. The non-refundable tick of the current text version is required: `text_version` is the `version` of `GET /v1/me/payment-terms`. The joining limits, with any referral discount already taken off, are the registration's `joining_payment`. Until payments go live the order is a dry run: `mode: dry_run` and `checkout: null`, and no money can be taken. A live order's `checkout` opens Razorpay; only the signed webhook makes the receipt. 
   ///
   /// Parameters:
   ///
@@ -153,6 +153,69 @@ class PaymentsApi {
     // FormatException when trying to decode an empty string.
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
       return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PaymentOrder',) as PaymentOrder;
+    
+    }
+    return null;
+  }
+
+  /// The payment terms to show with the non-refundable tick
+  ///
+  /// Show `text` next to the tick before every payment and send `version` as the order's `text_version`. Read it each time the payment screen opens; when the text changes, the version goes up and an order with the old version is refused `ACCEPTANCE_REQUIRED`. 
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<Response> getPaymentTermsWithHttpInfo({ String? xAppVersion, Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/v1/me/payment-terms';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (xAppVersion != null) {
+      headerParams[r'X-App-Version'] = parameterToString(xAppVersion);
+    }
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// The payment terms to show with the non-refundable tick
+  ///
+  /// Show `text` next to the tick before every payment and send `version` as the order's `text_version`. Read it each time the payment screen opens; when the text changes, the version goes up and an order with the old version is refused `ACCEPTANCE_REQUIRED`. 
+  ///
+  /// Parameters:
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<PaymentTerms?> getPaymentTerms({ String? xAppVersion, Future<void>? abortTrigger, }) async {
+    final response = await getPaymentTermsWithHttpInfo(xAppVersion: xAppVersion, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PaymentTerms',) as PaymentTerms;
     
     }
     return null;

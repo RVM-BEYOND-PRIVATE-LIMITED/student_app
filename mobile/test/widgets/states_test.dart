@@ -266,6 +266,24 @@ void main() {
       expect(find.byType(StudentErrorState), findsNothing);
     });
   });
+  test('a switched-off module is not shown as a server fault', () {
+    expect(
+      FailureCopy.of(const ServerFailure.status(503, code: 'MODULE_OFF'), en).title,
+      en.errorNotOpenTitle,
+    );
+    expect(
+      FailureCopy.of(const ServerFailure.status(503, code: 'NOT_READY'), en).title,
+      en.errorStartingTitle,
+    );
+    expect(
+      FailureCopy.of(const BadResponseFailure('not linked', statusCode: 409, code: 'NOT_LINKED'), en).title,
+      en.errorNotLinkedTitle,
+    );
+    expect(
+      FailureCopy.of(const ForbiddenFailure(null, 'NOT_ELIGIBLE'), en).title,
+      en.errorNotEligibleTitle,
+    );
+  });
 }
 
 /// [failure] as a reply carrying a request id would make it, where the type
@@ -282,4 +300,5 @@ Failure _withRequestId(Failure failure) => switch (failure) {
     requestId: 'req-test-04',
   ),
   _ => failure,
+
 };

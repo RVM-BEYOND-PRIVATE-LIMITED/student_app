@@ -16,6 +16,7 @@ class Device {
     required this.installId,
     required this.platform,
     this.appVersion,
+    this.integrityToken,
   });
 
   String installId;
@@ -30,21 +31,32 @@ class Device {
   ///
   String? appVersion;
 
+  /// Android only (0.33.0,
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? integrityToken;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is Device &&
     other.installId == installId &&
     other.platform == platform &&
-    other.appVersion == appVersion;
+    other.appVersion == appVersion &&
+    other.integrityToken == integrityToken;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
     (installId.hashCode) +
     (platform.hashCode) +
-    (appVersion == null ? 0 : appVersion!.hashCode);
+    (appVersion == null ? 0 : appVersion!.hashCode) +
+    (integrityToken == null ? 0 : integrityToken!.hashCode);
 
   @override
-  String toString() => 'Device[installId=$installId, platform=$platform, appVersion=$appVersion]';
+  String toString() => 'Device[installId=$installId, platform=$platform, appVersion=$appVersion, integrityToken=$integrityToken]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -54,6 +66,11 @@ class Device {
       json[r'app_version'] = this.appVersion;
     } else {
       json[r'app_version'] = null;
+    }
+    if (this.integrityToken != null) {
+      json[r'integrity_token'] = this.integrityToken;
+    } else {
+      json[r'integrity_token'] = null;
     }
     return json;
   }
@@ -80,6 +97,7 @@ class Device {
         installId: mapValueOfType<String>(json, r'install_id')!,
         platform: DevicePlatformEnum.fromJson(json[r'platform'])!,
         appVersion: mapValueOfType<String>(json, r'app_version'),
+        integrityToken: mapValueOfType<String>(json, r'integrity_token'),
       );
     }
     return null;

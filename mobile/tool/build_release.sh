@@ -16,8 +16,8 @@
 #
 #   cd mobile && bash tool/build_release.sh [more `flutter build` flags]
 #
-# Extra flags go to every build, for example
-#   --dart-define=STUDENT_API_HOST=https://...
+# Extra flags go to every build. With no --dart-define=STUDENT_API_HOST the
+# prod build calls the live Student API, https://student-api.rvmcad.org.
 # A FLAVOR other than prod is refused: a release build never carries the
 # Developer menu and its test switches, and tool/check_release.dart fails
 # one that does. The FLAVOR is read as Dart and Gradle read it, trimmed and

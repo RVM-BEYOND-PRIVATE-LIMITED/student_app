@@ -24,6 +24,7 @@ class _FakeApi extends StudentApi {
     theme: ThemeChoice.light,
     themeOpen: false,
   );
+  Map<String, dynamic>? patched;
 
   @override
   Future<ThemePreference> preferences() async => preference;
@@ -36,6 +37,20 @@ class _FakeApi extends StudentApi {
 
   @override
   Future<List<ConsentRecord>> consents() async => const [];
+
+  @override
+  Future<Map<String, dynamic>> getJson(String path) async => switch (path) {
+    '/v1/me/profile' => {
+      'contact_preferences': {'whatsapp': true, 'sms': true, 'push': true},
+    },
+    _ => <String, dynamic>{},
+  };
+
+  @override
+  Future<Map<String, dynamic>> patchJson(String path, [Object? body]) async {
+    patched = body is Map<String, dynamic> ? body : null;
+    return getJson(path);
+  }
 }
 
 const _account = StudentAccount(
@@ -52,16 +67,15 @@ const _account = StudentAccount(
   consentRequests: 0,
 );
 
-Future<({AuthBloc auth, LanguageBloc language, ThemeController theme})>
+Future<
+  ({AuthBloc auth, LanguageBloc language, ThemeController theme, _FakeApi api})
+>
 _pumpProfile(WidgetTester tester, {required bool open}) async {
   await getIt.reset();
   addTearDown(getIt.reset);
   final store = FakeSecureStore();
   final api = _FakeApi()
-    ..preference = ThemePreference(
-      theme: ThemeChoice.light,
-      themeOpen: open,
-    );
+    ..preference = ThemePreference(theme: ThemeChoice.light, themeOpen: open);
   final auth = AuthBloc(
     api: api,
     session: StudentSession(store),
@@ -75,11 +89,7 @@ _pumpProfile(WidgetTester tester, {required bool open}) async {
   final theme = ThemeController(
     api: api,
     store: ThemeStore(store),
-    saved: SavedTheme(
-      choice: ThemeChoice.light,
-      open: open,
-      pending: false,
-    ),
+    saved: SavedTheme(choice: ThemeChoice.light, open: open, pending: false),
   );
   getIt
     ..registerSingleton<StudentApi>(api)
@@ -99,7 +109,7 @@ _pumpProfile(WidgetTester tester, {required bool open}) async {
     ),
   );
   await tester.pumpAndSettle();
-  return (auth: auth, language: language, theme: theme);
+  return (auth: auth, language: language, theme: theme, api: api);
 }
 
 void main() {
@@ -130,5 +140,36 @@ void main() {
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     expect(find.text('Choose appearance'), findsNothing);
+  });
+  testWidgets('a contact preference is saved through the profile route', (
+    tester,
+  ) async {
+    final deps = await _pumpProfile(tester, open: true);
+    await tester.scrollUntilVisible(
+      find.widgetWithText(SwitchListTile, 'SMS'),
+      200,
+    );
+    await tester.tap(find.widgetWithText(SwitchListTile, 'SMS'));
+    await tester.pumpAndSettle();
+
+    expect(deps.api.patched, {
+      'contact_preferences': {'sms': false},
+    });
+  });
+
+  testWidgets('signing out asks first, and Stay signed in keeps the session', (
+    tester,
+  ) async {
+    final deps = await _pumpProfile(tester, open: false);
+    await tester.scrollUntilVisible(find.text('Sign out'), 200);
+    await tester.tap(find.text('Sign out'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sign out of this phone?'), findsOneWidget);
+    await tester.tap(find.text('Stay signed in'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sign out of this phone?'), findsNothing);
+    expect(deps.auth.state.status, AuthStatus.signedIn);
   });
 }

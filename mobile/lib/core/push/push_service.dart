@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../firebase_bootstrap.dart';
+import 'notification_routes.dart';
 
 /// The default channel ID declared in AndroidManifest.xml
 const String studentNotificationChannelId = 'student_rvm_alerts';
@@ -29,6 +30,19 @@ class PushService {
 
   Future<void>? _initFuture;
   String? _token;
+
+  /// Called when FCM gives this handset a new token, so the signed-in
+  /// student's registration moves to it. Set after sign-in; null signs out.
+  Future<void> Function(String token)? onToken;
+
+  /// A screen a notification asked for, waiting for the app shell to open it.
+  /// The app sets it back to null once it has navigated.
+  final ValueNotifier<String?> openedRoute = ValueNotifier<String?>(null);
+
+  /// A message that arrived while the app was open. The shell shows its
+  /// title and body, with an Open action, and clears it.
+  final ValueNotifier<RemoteMessage?> foregroundNotice =
+      ValueNotifier<RemoteMessage?>(null);
 
   String? get token => _token;
 
@@ -67,35 +81,36 @@ class PushService {
       // ignore: deprecated_member_use
       messaging.onTokenRefresh.listen((newToken) {
         _token = newToken;
-        if (kDebugMode) {
-          debugPrint('RVM Student FCM token refreshed: $newToken');
-        }
+        unawaited(_deliverToken(newToken));
       });
 
       // Listen for foreground messages
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        if (kDebugMode) {
-          debugPrint(
-            'RVM Student foreground message received: '
-            '${message.notification?.title} - ${message.notification?.body}',
-          );
-        }
+        foregroundNotice.value = message;
       });
 
       // Handle message clicks when app is opened from background
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        if (kDebugMode) {
-          debugPrint('RVM Student message opened app: ${message.data}');
-        }
+        openedRoute.value = NotificationRoutes.forMessage(message);
       });
 
       // Handle message click when app launched from terminated state
       final initialMessage = await messaging.getInitialMessage();
-      if (initialMessage != null && kDebugMode) {
-        debugPrint('RVM Student initial notification launch: ${initialMessage.data}');
+      if (initialMessage != null) {
+        openedRoute.value = NotificationRoutes.forMessage(initialMessage);
       }
     } catch (error) {
       debugPrint('RVM Student push service setup failed: $error');
+    }
+  }
+
+  Future<void> _deliverToken(String token) async {
+    final handler = onToken;
+    if (handler == null) return;
+    try {
+      await handler(token);
+    } catch (_) {
+      // The next sign-in or token refresh tries again.
     }
   }
 
@@ -116,11 +131,7 @@ class PushService {
     try {
       // Classic FCM registration token
       // ignore: deprecated_member_use
-      final token = await messaging.getToken();
-      if (kDebugMode && token != null && token.isNotEmpty) {
-        debugPrint('RVM Student FCM token: $token');
-      }
-      return token;
+      return await messaging.getToken();
     } catch (error) {
       debugPrint('RVM Student failed to get FCM token: $error');
       return null;

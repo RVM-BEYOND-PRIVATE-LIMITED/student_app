@@ -3,8 +3,9 @@ import 'package:dio/dio.dart';
 
 import '../network/student_auth_interceptor.dart';
 import 'models.dart';
+import 'upload_type.dart';
 
-/// The Stage 1A Student API (`packages/openapi/openapi.yaml` 0.1.0), called
+/// The Stage 1A Student API (`packages/openapi/openapi.yaml` 0.32.0), called
 /// through the one client [StudentDio] builds: the host guard, the
 /// Idempotency-Key, the app version and language headers, retries, the session
 /// token and its renewal, and the typed [Failure] all live there, so nothing
@@ -50,7 +51,11 @@ class StudentApi {
     '/v1/auth/refresh',
     '/v1/branches',
     '/v1/community/groups',
+    '/v1/community/comments/{id}/report',
     '/v1/community/groups/{id}/posts',
+    '/v1/community/mod/comment-reports',
+    '/v1/community/mod/comments/{id}/hide',
+    '/v1/community/mod/comments/{id}/restore',
     '/v1/community/mod/members/{id}/warn',
     '/v1/community/mod/posts/{id}/hide',
     '/v1/community/mod/posts/{id}/restore',
@@ -67,6 +72,7 @@ class StudentApi {
     '/v1/interview-packs/{id}/file',
     '/v1/me',
     '/v1/me/admission',
+    '/v1/me/admissions/history',
     '/v1/me/age-confirmation',
     '/v1/me/announcements',
     '/v1/me/attendance',
@@ -92,6 +98,7 @@ class StudentApi {
     '/v1/me/online-classes',
     '/v1/me/payment-orders',
     '/v1/me/payment-orders/{id}',
+    '/v1/me/payment-terms',
     '/v1/me/payout-account',
     '/v1/me/placement-prompts',
     '/v1/me/placement-prompts/{id}/dismiss',
@@ -108,8 +115,8 @@ class StudentApi {
     '/v1/me/registrations/{id}',
     '/v1/me/registrations/{id}/id-document',
     '/v1/me/registrations/{id}/submit',
-    '/v1/me/registrations/{id}/terms',
     '/v1/me/registrations/{id}/undertaking',
+    '/v1/me/registrations/{id}/terms',
     '/v1/me/registrations/{id}/video-complete',
     '/v1/me/registrations/{id}/video-start',
     '/v1/me/sessions',
@@ -120,6 +127,7 @@ class StudentApi {
     '/v1/playback/sessions',
     '/v1/playback/sessions/{id}/end',
     '/v1/playback/sessions/{id}/heartbeat',
+    '/v1/playback/sessions/{id}/stream',
     '/v1/public/branches',
     '/v1/public/courses',
     '/v1/public/enquiries',
@@ -385,12 +393,18 @@ class StudentApi {
   }) async {
     final form = FormData.fromMap({
       ...fields,
-      fileField: await MultipartFile.fromFile(filePath),
+      fileField: await _file(filePath),
     });
     return asMap(
       await _send<dynamic>(() => _dio.post<dynamic>(path, data: form)),
     );
   }
+
+  /// The file with the type its extension names. The servers check the MIME
+  /// type (JPEG, PNG or PDF), not only the extension; without this a picked
+  /// letter was sent as `application/octet-stream` and refused.
+  static Future<MultipartFile> _file(String path) async =>
+      MultipartFile.fromFile(path, contentType: mediaTypeForFile(path));
 
   /// The ID document upload: JPEG, PNG or PDF, at most 5 MB; only the last
   /// four characters of the number are sent (contract, `/id-document`).
@@ -401,7 +415,7 @@ class StudentApi {
     required String idLast4,
   }) async {
     final form = FormData.fromMap({
-      'file': await MultipartFile.fromFile(filePath),
+      'file': await _file(filePath),
       'id_type': idType,
       'id_last4': idLast4,
     });

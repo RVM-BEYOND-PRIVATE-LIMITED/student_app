@@ -22,6 +22,17 @@ val dartFlavor: String =
         ?.lowercase()
         .orEmpty()
 
+// #73 — the upload key comes from CI only. No keystore, password or
+// key-properties file is ever in git. The size-report path stays on the debug
+// key so a measured APK can never be mistaken for a Play build.
+val uploadKeystoreB64: String? = System.getenv("ANDROID_UPLOAD_KEYSTORE_B64")
+val uploadKeystorePassword: String? = System.getenv("ANDROID_UPLOAD_KEYSTORE_PASSWORD")
+val uploadKeyAlias: String? = System.getenv("ANDROID_UPLOAD_KEY_ALIAS")
+val uploadKeyPassword: String? = System.getenv("ANDROID_UPLOAD_KEY_PASSWORD")
+val hasUploadKey: Boolean = listOf(
+    uploadKeystoreB64, uploadKeystorePassword, uploadKeyAlias, uploadKeyPassword,
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.rvm.rvmstudent"
     compileSdk = flutter.compileSdkVersion
@@ -59,19 +70,31 @@ android {
         manifestPlaceholders["studentFlavor"] = dartFlavor.ifEmpty { "dev" }
     }
 
+    signingConfigs {
+        if (hasUploadKey) {
+            create("release") {
+                val keystore = layout.buildDirectory.file("upload-keystore.jks").get().asFile
+                keystore.parentFile.mkdirs()
+                keystore.writeBytes(Base64.getDecoder().decode(uploadKeystoreB64))
+                storeFile = keystore
+                storePassword = uploadKeystorePassword
+                keyAlias = uploadKeyAlias
+                keyPassword = uploadKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // No release signing is set up here on purpose. The app signing
-            // key and the signing route are permanent choices, made under
-            // student_app #20 before the first pilot build, and the keystore
-            // never enters this repository.
-            //
-            // The one exception is the CI size report: mobile-ci.yml sets
-            // RVM_CI_SIZE_REPORT=true to build a release APK only to measure
-            // it. That APK is signed with the throwaway debug key, is never
-            // uploaded or installed, and is deleted with the CI runner.
+            // #73 — a release build is signed with the upload key from CI
+            // only (the signingConfigs block above), never with a key in git.
+            // The CI size report is the only debug-signed path: mobile-ci.yml
+            // sets RVM_CI_SIZE_REPORT=true to build a release APK only to
+            // measure it. That APK is never uploaded or installed.
             if (System.getenv("RVM_CI_SIZE_REPORT") == "true") {
                 signingConfig = signingConfigs.getByName("debug")
+            } else if (hasUploadKey) {
+                signingConfig = signingConfigs.getByName("release")
             }
 
             // R8 code shrinking and obfuscation, and resource shrinking
@@ -86,6 +109,12 @@ android {
             // (tool/build_release.sh): both are kept for crash reports.
             isMinifyEnabled = true
             isShrinkResources = true
+            // Razorpay Checkout's callback classes are reached from its
+            // native activity, so R8 must keep them (proguard-rules.pro).
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
 
             manifestPlaceholders["studentFlavor"] = dartFlavor.ifEmpty { "prod" }
         }

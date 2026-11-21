@@ -81,13 +81,17 @@ void main() {
       expect(label('values-hi'), title('app_hi.arb'));
     });
 
-    test('release builds carry no signing key unless CI measures size', () {
+    test('release signing reads the upload key from CI only (#73)', () {
       final gradle = read(buildFile);
 
-      expect(gradle, isNot(contains('storeFile')));
+      expect(gradle, contains('ANDROID_UPLOAD_KEYSTORE_B64'));
+      expect(gradle, contains('ANDROID_UPLOAD_KEYSTORE_PASSWORD'));
+      expect(gradle, contains('ANDROID_UPLOAD_KEY_ALIAS'));
+      expect(gradle, contains('ANDROID_UPLOAD_KEY_PASSWORD'));
       expect(gradle, isNot(contains('key.properties')));
-      // The only signing line is the CI size report's throwaway debug key.
-      expect(RegExp('signingConfig\\s*=').allMatches(gradle), hasLength(1));
+      // One line for the CI size report's throwaway debug key, one for the
+      // release upload key that only exists in CI.
+      expect(RegExp('signingConfig\\s*=').allMatches(gradle), hasLength(2));
       expect(gradle, contains('System.getenv("RVM_CI_SIZE_REPORT") == "true"'));
     });
 

@@ -26,6 +26,7 @@ class Registration {
     required this.idType,
     this.courses = const [],
     required this.totalPaise,
+    this.joiningPayment,
     required this.undertaking,
     required this.idDocument,
     required this.submittedAt,
@@ -59,6 +60,8 @@ class Registration {
   /// Minimum value: 0
   int totalPaise;
 
+  RegistrationJoiningPayment? joiningPayment;
+
   RegistrationUndertaking undertaking;
 
   RegistrationIdDocument? idDocument;
@@ -83,6 +86,7 @@ class Registration {
     other.idType == idType &&
     _deepEquality.equals(other.courses, courses) &&
     other.totalPaise == totalPaise &&
+    other.joiningPayment == joiningPayment &&
     other.undertaking == undertaking &&
     other.idDocument == idDocument &&
     other.submittedAt == submittedAt &&
@@ -104,13 +108,14 @@ class Registration {
     (idType == null ? 0 : idType!.hashCode) +
     (courses.hashCode) +
     (totalPaise.hashCode) +
+    (joiningPayment == null ? 0 : joiningPayment!.hashCode) +
     (undertaking.hashCode) +
     (idDocument == null ? 0 : idDocument!.hashCode) +
     (submittedAt == null ? 0 : submittedAt!.hashCode) +
     (missing.hashCode);
 
   @override
-  String toString() => 'Registration[id=$id, status=$status, branchId=$branchId, studentName=$studentName, email=$email, dateOfBirth=$dateOfBirth, currentAddress=$currentAddress, permanentAddress=$permanentAddress, fatherName=$fatherName, fatherPhone=$fatherPhone, idType=$idType, courses=$courses, totalPaise=$totalPaise, undertaking=$undertaking, idDocument=$idDocument, submittedAt=$submittedAt, missing=$missing]';
+  String toString() => 'Registration[id=$id, status=$status, branchId=$branchId, studentName=$studentName, email=$email, dateOfBirth=$dateOfBirth, currentAddress=$currentAddress, permanentAddress=$permanentAddress, fatherName=$fatherName, fatherPhone=$fatherPhone, idType=$idType, courses=$courses, totalPaise=$totalPaise, joiningPayment=$joiningPayment, undertaking=$undertaking, idDocument=$idDocument, submittedAt=$submittedAt, missing=$missing]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -163,6 +168,11 @@ class Registration {
     }
       json[r'courses'] = this.courses;
       json[r'total_paise'] = this.totalPaise;
+    if (this.joiningPayment != null) {
+      json[r'joining_payment'] = this.joiningPayment;
+    } else {
+      json[r'joining_payment'] = null;
+    }
       json[r'undertaking'] = this.undertaking;
     if (this.idDocument != null) {
       json[r'id_document'] = this.idDocument;
@@ -229,6 +239,7 @@ class Registration {
         idType: mapValueOfType<String>(json, r'id_type'),
         courses: Course.listFromJson(json[r'courses']),
         totalPaise: mapValueOfType<int>(json, r'total_paise')!,
+        joiningPayment: RegistrationJoiningPayment.fromJson(json[r'joining_payment']),
         undertaking: RegistrationUndertaking.fromJson(json[r'undertaking'])!,
         idDocument: RegistrationIdDocument.fromJson(json[r'id_document']),
         submittedAt: mapDateTime(json, r'submitted_at', r''),
