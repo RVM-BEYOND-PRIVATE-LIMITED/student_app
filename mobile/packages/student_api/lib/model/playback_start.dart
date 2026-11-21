@@ -14,25 +14,42 @@ class PlaybackStart {
   /// Returns a new [PlaybackStart] instance.
   PlaybackStart({
     required this.videoId,
+    this.integrityToken,
   });
 
   String videoId;
 
+  /// Android app only (0.33.0,
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  String? integrityToken;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is PlaybackStart &&
-    other.videoId == videoId;
+    other.videoId == videoId &&
+    other.integrityToken == integrityToken;
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
-    (videoId.hashCode);
+    (videoId.hashCode) +
+    (integrityToken == null ? 0 : integrityToken!.hashCode);
 
   @override
-  String toString() => 'PlaybackStart[videoId=$videoId]';
+  String toString() => 'PlaybackStart[videoId=$videoId, integrityToken=$integrityToken]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
       json[r'video_id'] = this.videoId;
+    if (this.integrityToken != null) {
+      json[r'integrity_token'] = this.integrityToken;
+    } else {
+      json[r'integrity_token'] = null;
+    }
     return json;
   }
 
@@ -54,6 +71,7 @@ class PlaybackStart {
 
       return PlaybackStart(
         videoId: mapValueOfType<String>(json, r'video_id')!,
+        integrityToken: mapValueOfType<String>(json, r'integrity_token'),
       );
     }
     return null;

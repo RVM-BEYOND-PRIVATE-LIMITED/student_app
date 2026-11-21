@@ -16,6 +16,9 @@ class Referral {
     required this.code,
     required this.link,
     required this.referrals,
+    this.rewardPaise,
+    this.friendDiscountPaise,
+    this.items = const [],
   });
 
   String? code;
@@ -24,21 +27,52 @@ class Referral {
 
   ReferralReferrals referrals;
 
+  /// What a referral earns today, once the friend's fee is fully received (0.35.0).
+  ///
+  /// Minimum value: 0
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  int? rewardPaise;
+
+  /// What a friend gets off the fee today (0.35.0).
+  ///
+  /// Minimum value: 0
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
+  int? friendDiscountPaise;
+
+  /// One per friend, newest first, at most 100 (0.35.0). `reward` is null until the friend's fee is fully received.
+  List<ReferralItemsInner> items;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is Referral &&
     other.code == code &&
     other.link == link &&
-    other.referrals == referrals;
+    other.referrals == referrals &&
+    other.rewardPaise == rewardPaise &&
+    other.friendDiscountPaise == friendDiscountPaise &&
+    _deepEquality.equals(other.items, items);
 
   @override
   int get hashCode =>
     // ignore: unnecessary_parenthesis
     (code == null ? 0 : code!.hashCode) +
     (link == null ? 0 : link!.hashCode) +
-    (referrals.hashCode);
+    (referrals.hashCode) +
+    (rewardPaise == null ? 0 : rewardPaise!.hashCode) +
+    (friendDiscountPaise == null ? 0 : friendDiscountPaise!.hashCode) +
+    (items.hashCode);
 
   @override
-  String toString() => 'Referral[code=$code, link=$link, referrals=$referrals]';
+  String toString() => 'Referral[code=$code, link=$link, referrals=$referrals, rewardPaise=$rewardPaise, friendDiscountPaise=$friendDiscountPaise, items=$items]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -53,6 +87,17 @@ class Referral {
       json[r'link'] = null;
     }
       json[r'referrals'] = this.referrals;
+    if (this.rewardPaise != null) {
+      json[r'reward_paise'] = this.rewardPaise;
+    } else {
+      json[r'reward_paise'] = null;
+    }
+    if (this.friendDiscountPaise != null) {
+      json[r'friend_discount_paise'] = this.friendDiscountPaise;
+    } else {
+      json[r'friend_discount_paise'] = null;
+    }
+      json[r'items'] = this.items;
     return json;
   }
 
@@ -78,6 +123,9 @@ class Referral {
         code: mapValueOfType<String>(json, r'code'),
         link: mapValueOfType<String>(json, r'link'),
         referrals: ReferralReferrals.fromJson(json[r'referrals'])!,
+        rewardPaise: mapValueOfType<int>(json, r'reward_paise'),
+        friendDiscountPaise: mapValueOfType<int>(json, r'friend_discount_paise'),
+        items: ReferralItemsInner.listFromJson(json[r'items']),
       );
     }
     return null;

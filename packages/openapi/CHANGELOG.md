@@ -4,6 +4,29 @@ Additive changes stay in v1: new paths, new optional fields, new enum values the
 tolerates. A breaking change is never made in place: it gets a new path and a raised minimum
 app version, and the old path keeps working until that version is enforced.
 
+## 0.35.1 (21 Nov 2026)
+
+Copied from Scheduler_Backend at commit 3528c4b (release #662, live in production). All additions; older apps ignore them.
+
+- 0.35.1: two descriptions quoted (an unquoted comma had split them); no route or reply change.
+
+- 0.35.0 (student_app #89): `GET /v1/me/payment-terms` gives the non-refundable line to show with the tick before
+  paying, in the account's language, and its `version`, which is the `text_version` a payment order sends. A new
+  text comes with a new version; an order with an older one is refused `ACCEPTANCE_REQUIRED`. `Registration` gains
+  `joining_payment` (`referral_discount_paise`, `payable_paise`, `min_paise`): the server already takes an applied
+  referral's discount off, so the first payment is from `min_paise` to `payable_paise` and the app subtracts
+  nothing. `Referral` gains `items` (one row per friend: phone masked, status, and the reward with its amount,
+  payout status and `paid_at`), `reward_paise` and `friend_discount_paise`.
+- 0.34.0: `GET /v1/me/admissions/history` (a student who left a course midway and came back on an add-on
+  admission) and an optional `earlier_course` on complaints.
+- 0.33.0 (Scheduler_Backend #639): Play Integrity. The Android app sends an optional `integrity_token` in `device`
+  at `POST /v1/auth/otp/verify` and in the body of `POST /v1/playback/sessions`, for the nonce described in the
+  contract's description. While the server enforces the check, a phone that fails it gets 409
+  `DEVICE_INTEGRITY_FAILED` with `details.reason`. `DEVICE_NOT_TRUSTED` (not the bound phone) is unchanged. The
+  check is switched off on the server today.
+
+The generated Dart client is regenerated.
+
 ## 0.32.0 (19 Nov 2026)
 
 Copied from Scheduler_Backend at commit a69f3e9. Adds the self-hosted video stream

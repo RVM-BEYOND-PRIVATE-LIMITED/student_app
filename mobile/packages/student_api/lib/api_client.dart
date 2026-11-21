@@ -187,6 +187,14 @@ class ApiClient {
           return Admission.fromJson(value);
         case 'AdmissionBranch':
           return AdmissionBranch.fromJson(value);
+        case 'AdmissionHistory':
+          return AdmissionHistory.fromJson(value);
+        case 'AdmissionHistoryAdmissionsInner':
+          return AdmissionHistoryAdmissionsInner.fromJson(value);
+        case 'AdmissionHistoryAdmissionsInnerBatchesInner':
+          return AdmissionHistoryAdmissionsInnerBatchesInner.fromJson(value);
+        case 'AdmissionHistoryAdmissionsInnerReceiptsInner':
+          return AdmissionHistoryAdmissionsInnerReceiptsInner.fromJson(value);
         case 'AdmissionPlanInner':
           return AdmissionPlanInner.fromJson(value);
         case 'AnnouncementList':
@@ -415,6 +423,8 @@ class ApiClient {
           return PaymentOrderCreated.fromJson(value);
         case 'PaymentOrderCreatedCheckout':
           return PaymentOrderCreatedCheckout.fromJson(value);
+        case 'PaymentTerms':
+          return PaymentTerms.fromJson(value);
         case 'PayoutAccountReply':
           return PayoutAccountReply.fromJson(value);
         case 'PayoutAccountReplyAccount':
@@ -491,6 +501,10 @@ class ApiClient {
           return ReferralApplied.fromJson(value);
         case 'ReferralApply':
           return ReferralApply.fromJson(value);
+        case 'ReferralItemsInner':
+          return ReferralItemsInner.fromJson(value);
+        case 'ReferralItemsInnerReward':
+          return ReferralItemsInnerReward.fromJson(value);
         case 'ReferralReferrals':
           return ReferralReferrals.fromJson(value);
         case 'RefreshRequest':
@@ -501,6 +515,8 @@ class ApiClient {
           return RegistrationFields.fromJson(value);
         case 'RegistrationIdDocument':
           return RegistrationIdDocument.fromJson(value);
+        case 'RegistrationJoiningPayment':
+          return RegistrationJoiningPayment.fromJson(value);
         case 'RegistrationUndertaking':
           return RegistrationUndertaking.fromJson(value);
         case 'RequestDeletionRequest':
