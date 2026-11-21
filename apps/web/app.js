@@ -356,4 +356,27 @@ async function renderAppearance(panel) {
   });
 }
 
-signIn();
+// While the student app is closed (the student_app switch is off: Student API 0.36.0 `sign_in_open`)
+// or under maintenance, show that instead of a sign-in form. If /v1/config cannot be read the form
+// shows as before; the API itself still refuses every sign-in while the app is closed.
+function notOpen(title, message) {
+  view(`<div class="card"><h1>${escape(title)}</h1>
+    <p class="muted-text">${escape(message)}</p></div>`);
+}
+
+async function start() {
+  try {
+    const config = await call('/v1/config');
+    if (config?.maintenance?.active) {
+      notOpen('Back soon', config.maintenance.message || 'The app is being updated. Please try again in a few minutes.');
+      return;
+    }
+    if (config?.sign_in_open === false) {
+      notOpen('Not open yet', 'The RVM student app is not open yet. Please check again later.');
+      return;
+    }
+  } catch { /* The form shows; sign-in answers for itself. */ }
+  signIn();
+}
+
+start();
