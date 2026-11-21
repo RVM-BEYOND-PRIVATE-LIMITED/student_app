@@ -1,2 +1,0 @@
-POST /v1/playback/sessions the response property `otp` became nullable for the status `201`
-POST /v1/playback/sessions the response property `playback_info` became nullable for the status `201`
