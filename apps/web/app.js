@@ -356,9 +356,11 @@ async function renderAppearance(panel) {
   });
 }
 
-// While the student app is closed (the student_app switch is off: Student API 0.36.0 `sign_in_open`)
-// or under maintenance, show that instead of a sign-in form. If /v1/config cannot be read the form
-// shows as before; the API itself still refuses every sign-in while the app is closed.
+// While the student app is not open to the public, or under maintenance, show that instead of a
+// sign-in form. Public means `sign_in_public` (Student API 0.37.0: the student_app switch is on); a
+// pilot for test phones in the app keeps the web closed (Scheduler_Backend #686). An API before
+// 0.37.0 has only `sign_in_open`. If /v1/config cannot be read the form shows as before; the API
+// itself still refuses every sign-in while the app is closed.
 function notOpen(title, message) {
   view(`<div class="card"><h1>${escape(title)}</h1>
     <p class="muted-text">${escape(message)}</p></div>`);
@@ -371,7 +373,7 @@ async function start() {
       notOpen('Back soon', config.maintenance.message || 'The app is being updated. Please try again in a few minutes.');
       return;
     }
-    if (config?.sign_in_open === false) {
+    if ((config?.sign_in_public ?? config?.sign_in_open) === false) {
       notOpen('Not open yet', 'The RVM student app is not open yet. Please check again later.');
       return;
     }
