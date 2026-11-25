@@ -4,10 +4,10 @@
 against. It is a **copy**: the Student API is built in the backend repository, and the backend's
 contract is the source of truth. This copy never leads.
 
-**Status: 0.35.1 is published** (21 Nov 2026): the whole Stage 1A, Stage 3 and Stage 4 `/v1`
-surface. This copy adds Play Integrity (0.33.0), the admission history (0.34.0), and the payment
-terms, the joining amount and the referral rows (0.35.0, student_app #89), all served in
-production since release #662. Each route says
+**Status: 0.38.0 is published** (25 Nov 2026): the whole Stage 1A, Stage 3 and Stage 4 `/v1`
+surface. This copy adds the two sign-in flags on `Config` (0.36.0, 0.37.0) and the last position
+of a recorded video for "Continue watching" (0.38.0, student_app #103), all served in
+production since release #702. Each route says
 `x-status: live` (served now) or `planned` (contract only, 404 until its backend issue ships).
 
 ## Publishing a new version

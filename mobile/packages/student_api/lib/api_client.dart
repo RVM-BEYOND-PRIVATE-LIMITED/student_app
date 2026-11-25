@@ -445,6 +445,8 @@ class ApiClient {
           return PlaybackBeat.fromJson(value);
         case 'PlaybackBeatReply':
           return PlaybackBeatReply.fromJson(value);
+        case 'PlaybackEnd':
+          return PlaybackEnd.fromJson(value);
         case 'PlaybackEnded':
           return PlaybackEnded.fromJson(value);
         case 'PlaybackStart':

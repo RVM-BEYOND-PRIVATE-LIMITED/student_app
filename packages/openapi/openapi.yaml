@@ -1,13 +1,30 @@
 openapi: 3.1.0
 info:
   title: RVM Student API
-  version: 0.35.1
+  version: 0.38.0
   # Copied unchanged from Scheduler_Backend docs/api/student-api.openapi.yaml at this commit.
-  x-source-commit: 3528c4bb2e6d2f1dd41bb8440405a4db9b953c4c
+  x-source-commit: 4266db6c9b7a516eac69ba51b35abef45c2be318
   summary: What the RVM student app and its web version call.
   description: |
     The `/v1` surface of Stage 1A: sign-in, linking a student to their admission, consents and
     the age tick, Jobs access, the Campus hand-off and the prompts that come back from Campus.
+
+    Changes in 0.38.0 (#698, "Continue watching"): every `VideoLibrary` item gains `last_position_s` (the second
+    the student last stopped at; null when the video was never started) and `last_watched_at`. New
+    `GET /v1/me/videos/continue`: the started and unfinished videos, newest first. `PlaybackStarted` gains
+    `last_position_s`: where the player starts from. `POST /v1/playback/sessions/{id}/end` takes an optional body
+    `{ position_s }`. The heartbeat's `position_s` is where the player IS (the server keeps the furthest second
+    itself), and the app also sends one beat on pause. Additive: an app from before 0.38.0 keeps working.
+
+    Changes in 0.37.0 (#686): `Config` gains `sign_in_public`, true only while the `student_app` switch is on for
+    everyone. During a pilot `sign_in_open` is true (the app shows its sign-in form; listed phones get a code) and
+    `sign_in_public` is false, so the website's student links and the web version stay closed to the public. The same
+    value for every caller. An addition; older apps ignore it.
+
+    Changes in 0.36.0: `Config` gains `sign_in_open`, true while the student app is open for sign-in (the
+    `student_app` switch is on or in pilot). While it is false every sign-in answers `MODULE_OFF`, so the web version
+    and the website show that the app is not open yet instead of a sign-in form. The same value for every caller; it
+    says nothing about pilot phones. An addition; older apps ignore it.
 
     Changes in 0.35.1: the descriptions of `Referral.reward_paise` and `friend_discount_paise` are quoted (an
     unquoted comma split one into a stray property). No change to any route or reply.
@@ -3267,7 +3284,8 @@ paths:
       description: |
         Course videos of my courses, by course and module, and the recordings of my own batches. Each one
         has `views_left` and, when it cannot be played now, `locked_reason` (`FEE_PENDING`,
-        `NOT_YOUR_COURSE`, `ACCESS_ENDED`, `NO_VIEWS_LEFT`).
+        `NOT_YOUR_COURSE`, `ACCESS_ENDED`, `NO_VIEWS_LEFT`). 0.38.0: each one also has `last_position_s`,
+        the second I last stopped at (null when I never started it), and `last_watched_at`.
       x-status: live
       parameters:
         - $ref: '#/components/parameters/AppVersion'
@@ -3280,7 +3298,38 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/VideoLibrary' }
               examples:
-                one: { value: { videos: [{ id: 3f0c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, kind: course, title: 'Sketch basics', course: { id: 5a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, name: AutoCAD }, module_name: 'Module 1', batch_id: null, duration_s: 1800, views_left: 1, locked_reason: null }] } }
+                one: { value: { videos: [{ id: 3f0c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, kind: course, title: 'Sketch basics', course: { id: 5a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, name: AutoCAD }, module_name: 'Module 1', batch_id: null, duration_s: 1800, views_left: 1, locked_reason: null, last_position_s: 250, last_watched_at: '2026-11-25T09:40:00+00:00' }] } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '426': { $ref: '#/components/responses/UpgradeRequired' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+
+  /v1/me/videos/continue:
+    get:
+      tags: [videos]
+      operationId: listContinueWatching
+      summary: Continue watching
+      description: |
+        The videos of my library that I started and have not finished, newest first, at most 20 (0.38.0, #698).
+        Started: `last_position_s` above 0. Finished: stopped at or after 95% of the length; a finished video
+        leaves this list and stays in the library. A video I never opened is not here. An item that cannot be
+        played now keeps its `locked_reason` (for example `NO_VIEWS_LEFT` once the 60-minute resume has passed):
+        show why, and offer the extra-view request. To continue, start a playback and seek to the
+        `last_position_s` of its answer.
+      x-status: live
+      parameters:
+        - $ref: '#/components/parameters/AppVersion'
+      responses:
+        '200':
+          description: OK.
+          headers:
+            X-Request-Id: { $ref: '#/components/headers/X-Request-Id' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VideoLibrary' }
+              examples:
+                one: { value: { videos: [{ id: 3f0c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, kind: course, title: 'Sketch basics', course: { id: 5a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, name: AutoCAD }, module_name: 'Module 1', batch_id: null, duration_s: 1800, views_left: 0, locked_reason: null, last_position_s: 250, last_watched_at: '2026-11-25T09:40:00+00:00' }] } }
+                none: { value: { videos: [] } }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '426': { $ref: '#/components/responses/UpgradeRequired' }
@@ -3298,6 +3347,7 @@ paths:
         session only (see PlaybackStarted: a signed link to RVM's own storage by default, with the watermark text
         set by the server; or a VdoCipher token). A view is
         counted once 5% is watched; reopening within 60 minutes of a counted session does not count again.
+        0.38.0: `last_position_s` is where I last stopped this video; the player seeks there (null: from the start).
       x-status: live
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -3318,8 +3368,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PlaybackStarted' }
               examples:
-                own: { value: { session_id: 7a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, provider: self, stream_url: 'https://student-api.example.org/v1/playback/sessions/7a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b/stream?t=1800002400.example', watermark_text: 'Asha Verma 4821', otp: null, playback_info: null, heartbeat_seconds: 15, resumed: false, views_left: 1, expires_in: 2400 } }
-                vdocipher: { value: { session_id: 7a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, provider: vdocipher, otp: 'example-otp', playback_info: 'example-info', heartbeat_seconds: 15, resumed: false, views_left: 1, expires_in: 300 } }
+                own: { value: { session_id: 7a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, provider: self, stream_url: 'https://student-api.example.org/v1/playback/sessions/7a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b/stream?t=1800002400.example', watermark_text: 'Asha Verma 4821', otp: null, playback_info: null, heartbeat_seconds: 15, resumed: false, views_left: 1, expires_in: 2400, last_position_s: 250 } }
+                vdocipher: { value: { session_id: 7a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, provider: vdocipher, otp: 'example-otp', playback_info: 'example-info', heartbeat_seconds: 15, resumed: false, views_left: 1, expires_in: 300, last_position_s: null } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404':
           description: No such published video.
@@ -3350,8 +3400,11 @@ paths:
       operationId: playbackHeartbeat
       summary: Report the position every 15 seconds
       description: |
-        `position_s` is the furthest second reached, `elapsed_s` the seconds played since the last beat. The
-        answer can carry `stop: true` with a reason (`closed`, `replaced`, `revoked`): the player stops.
+        `position_s` is the second the player is at now, `elapsed_s` the seconds played since the last beat. The
+        server keeps the furthest second itself (it decides when a view counts) and the last one (0.38.0: what
+        "Continue watching" starts from, so going back moves it back). Send one beat when the student pauses as
+        well as every 15 seconds. The answer can carry `stop: true` with a reason (`closed`, `replaced`,
+        `revoked`): the player stops.
       x-status: live
       parameters:
         - name: id
@@ -3389,6 +3442,10 @@ paths:
       tags: [videos]
       operationId: endPlayback
       summary: Close a playback
+      description: |
+        0.38.0: send `position_s`, the second the player stopped at, so the video can be continued from there.
+        The body is optional; without it the position of the last heartbeat is kept. A playback that had already
+        ended (replaced, revoked or closed) answers the same and its position is left as it was.
       x-status: live
       parameters:
         - name: id
@@ -3397,6 +3454,13 @@ paths:
           schema: { type: string, format: uuid }
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/AppVersion'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlaybackEnd' }
+            examples:
+              one: { value: { position_s: 250 } }
       responses:
         '200':
           description: Closed.
@@ -3407,6 +3471,7 @@ paths:
               schema: { $ref: '#/components/schemas/PlaybackEnded' }
               examples:
                 one: { value: { session_id: 7a1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b, ended: true, counted: true } }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
         '401': { $ref: '#/components/responses/Unauthenticated' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -4140,7 +4205,7 @@ components:
 
     Config:
       type: object
-      required: [min_supported_version, latest_version, store_url, maintenance, jobs_header]
+      required: [min_supported_version, latest_version, store_url, maintenance, jobs_header, sign_in_open, sign_in_public]
       additionalProperties: false
       properties:
         min_supported_version: { $ref: '#/components/schemas/Version' }
@@ -4162,6 +4227,17 @@ components:
                 - type: 'null'
                 - type: string
         jobs_header: { $ref: '#/components/schemas/JobsHeader' }
+        sign_in_open:
+          type: boolean
+          description: |
+            Whether anyone can sign in (0.36.0): false while the `student_app` switch is off, and then every sign-in
+            answers `MODULE_OFF`. True when it is on or in pilot. The same for every caller.
+        sign_in_public:
+          type: boolean
+          description: |
+            Whether the student app is open to everyone (0.37.0): true only while the `student_app` switch is on. False
+            during a pilot, when only listed phones get a code. The website and the web version show their student
+            links and sign-in form only when it is true. The same for every caller.
 
     JobsHeader:
       type: object
@@ -5649,7 +5725,7 @@ components:
           type: array
           items:
             type: object
-            required: [id, kind, title, course, module_name, batch_id, duration_s, views_left, locked_reason]
+            required: [id, kind, title, course, module_name, batch_id, duration_s, views_left, locked_reason, last_position_s, last_watched_at]
             additionalProperties: false
             properties:
               id: { type: string, format: uuid }
@@ -5669,6 +5745,12 @@ components:
               duration_s: { oneOf: [{ type: 'null' }, { type: integer }] }
               views_left: { type: integer, minimum: 0 }
               locked_reason: { oneOf: [{ type: 'null' }, { type: string, enum: [FEE_PENDING, NOT_YOUR_COURSE, ACCESS_ENDED, NO_VIEWS_LEFT, NOT_LINKED] }] }
+              last_position_s:
+                oneOf: [{ type: 'null' }, { type: integer, minimum: 0 }]
+                description: The second the student last stopped this video at (0.38.0, #698). Null when never started.
+              last_watched_at:
+                oneOf: [{ type: 'null' }, { type: string, format: date-time }]
+                description: When that position was recorded. Null when never started.
 
     PlaybackStart:
       type: object
@@ -5691,7 +5773,7 @@ components:
         (at most `expires_in` seconds) and is never a download. The app shows NO download, share or cast button and
         blocks screenshots and screen recording on the player screen. `vdocipher`: the VdoCipher player with `otp` and
         `playback_info`; `stream_url` is absent. The heartbeat, the 5% count and the 60-minute resume are the same.
-      required: [session_id, otp, playback_info, heartbeat_seconds, resumed, views_left, expires_in]
+      required: [session_id, otp, playback_info, heartbeat_seconds, resumed, views_left, expires_in, last_position_s]
       additionalProperties: false
       properties:
         session_id: { type: string, format: uuid }
@@ -5704,6 +5786,9 @@ components:
         resumed: { type: boolean }
         views_left: { type: integer, minimum: 0 }
         expires_in: { type: integer, minimum: 1 }
+        last_position_s:
+          oneOf: [{ type: 'null' }, { type: integer, minimum: 0 }]
+          description: Where the student last stopped this video (0.38.0, #698). The player seeks there. Null starts at 0.
 
     PlaybackBeat:
       type: object
@@ -5721,6 +5806,13 @@ components:
         stop: { type: boolean }
         reason: { oneOf: [{ type: 'null' }, { type: string, enum: [closed, replaced, revoked] }] }
         counted: { type: boolean }
+
+    PlaybackEnd:
+      type: object
+      description: Optional body of the end call (0.38.0, #698).
+      additionalProperties: false
+      properties:
+        position_s: { type: integer, minimum: 0, maximum: 86400 }
 
     PlaybackEnded:
       type: object
@@ -5984,6 +6076,8 @@ components:
           logos:
             - { key: rvm, url: 'https://cdn.example.org/logos/rvm.png' }
             - { key: campus, url: 'https://cdn.example.org/logos/campus.png' }
+        sign_in_open: true
+        sign_in_public: true
     ConfigMaintenance:
       value:
         min_supported_version: 1.0.0
@@ -5991,6 +6085,8 @@ components:
         store_url: null
         maintenance: { active: true, message: The app is being updated. Please try again in a few minutes. }
         jobs_header: { title: Jobs on BadaBhai Campus, subtitle: null, logos: [] }
+        sign_in_open: true
+        sign_in_public: true
     ChallengeWhatsapp:
       value: { challenge_id: 7d1f8c2e-1b3a-4c5d-9e6f-0a1b2c3d4e5f, channel: whatsapp, expires_at: '2026-12-01T10:05:00Z', resend_available_at: '2026-12-01T10:00:30Z' }
     ChallengeSms:

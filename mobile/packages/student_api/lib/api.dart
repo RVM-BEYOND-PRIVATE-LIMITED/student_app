@@ -177,6 +177,7 @@ part 'model/placement_proof_list_proofs_inner.dart';
 part 'model/placement_proof_list_proofs_inner_reward.dart';
 part 'model/playback_beat.dart';
 part 'model/playback_beat_reply.dart';
+part 'model/playback_end.dart';
 part 'model/playback_ended.dart';
 part 'model/playback_start.dart';
 part 'model/playback_started.dart';

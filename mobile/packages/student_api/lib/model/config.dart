@@ -18,6 +18,8 @@ class Config {
     required this.storeUrl,
     required this.maintenance,
     required this.jobsHeader,
+    required this.signInOpen,
+    required this.signInPublic,
   });
 
   String minSupportedVersion;
@@ -31,13 +33,21 @@ class Config {
 
   JobsHeader jobsHeader;
 
+  /// Whether anyone can sign in (0.36.0): false while the `student_app` switch is off, and then every sign-in answers `MODULE_OFF`. True when it is on or in pilot. The same for every caller. 
+  bool signInOpen;
+
+  /// Whether the student app is open to everyone (0.37.0): true only while the `student_app` switch is on. False during a pilot, when only listed phones get a code. The website and the web version show their student links and sign-in form only when it is true. The same for every caller. 
+  bool signInPublic;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is Config &&
     other.minSupportedVersion == minSupportedVersion &&
     other.latestVersion == latestVersion &&
     other.storeUrl == storeUrl &&
     other.maintenance == maintenance &&
-    other.jobsHeader == jobsHeader;
+    other.jobsHeader == jobsHeader &&
+    other.signInOpen == signInOpen &&
+    other.signInPublic == signInPublic;
 
   @override
   int get hashCode =>
@@ -46,10 +56,12 @@ class Config {
     (latestVersion.hashCode) +
     (storeUrl == null ? 0 : storeUrl!.hashCode) +
     (maintenance.hashCode) +
-    (jobsHeader.hashCode);
+    (jobsHeader.hashCode) +
+    (signInOpen.hashCode) +
+    (signInPublic.hashCode);
 
   @override
-  String toString() => 'Config[minSupportedVersion=$minSupportedVersion, latestVersion=$latestVersion, storeUrl=$storeUrl, maintenance=$maintenance, jobsHeader=$jobsHeader]';
+  String toString() => 'Config[minSupportedVersion=$minSupportedVersion, latestVersion=$latestVersion, storeUrl=$storeUrl, maintenance=$maintenance, jobsHeader=$jobsHeader, signInOpen=$signInOpen, signInPublic=$signInPublic]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -62,6 +74,8 @@ class Config {
     }
       json[r'maintenance'] = this.maintenance;
       json[r'jobs_header'] = this.jobsHeader;
+      json[r'sign_in_open'] = this.signInOpen;
+      json[r'sign_in_public'] = this.signInPublic;
     return json;
   }
 
@@ -85,6 +99,10 @@ class Config {
         assert(json[r'maintenance'] != null, 'Required key "Config[maintenance]" has a null value in JSON.');
         assert(json.containsKey(r'jobs_header'), 'Required key "Config[jobs_header]" is missing from JSON.');
         assert(json[r'jobs_header'] != null, 'Required key "Config[jobs_header]" has a null value in JSON.');
+        assert(json.containsKey(r'sign_in_open'), 'Required key "Config[sign_in_open]" is missing from JSON.');
+        assert(json[r'sign_in_open'] != null, 'Required key "Config[sign_in_open]" has a null value in JSON.');
+        assert(json.containsKey(r'sign_in_public'), 'Required key "Config[sign_in_public]" is missing from JSON.');
+        assert(json[r'sign_in_public'] != null, 'Required key "Config[sign_in_public]" has a null value in JSON.');
         return true;
       }());
 
@@ -94,6 +112,8 @@ class Config {
         storeUrl: mapValueOfType<String>(json, r'store_url'),
         maintenance: ConfigMaintenance.fromJson(json[r'maintenance'])!,
         jobsHeader: JobsHeader.fromJson(json[r'jobs_header'])!,
+        signInOpen: mapValueOfType<bool>(json, r'sign_in_open')!,
+        signInPublic: mapValueOfType<bool>(json, r'sign_in_public')!,
       );
     }
     return null;
@@ -146,6 +166,8 @@ class Config {
     'store_url',
     'maintenance',
     'jobs_header',
+    'sign_in_open',
+    'sign_in_public',
   };
 }
 
