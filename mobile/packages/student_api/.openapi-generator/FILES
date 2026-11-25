@@ -147,6 +147,7 @@ doc/PlacementProofListProofsInner.md
 doc/PlacementProofListProofsInnerReward.md
 doc/PlaybackBeat.md
 doc/PlaybackBeatReply.md
+doc/PlaybackEnd.md
 doc/PlaybackEnded.md
 doc/PlaybackStart.md
 doc/PlaybackStarted.md
@@ -371,6 +372,7 @@ lib/model/placement_proof_list_proofs_inner.dart
 lib/model/placement_proof_list_proofs_inner_reward.dart
 lib/model/playback_beat.dart
 lib/model/playback_beat_reply.dart
+lib/model/playback_end.dart
 lib/model/playback_ended.dart
 lib/model/playback_start.dart
 lib/model/playback_started.dart
@@ -578,6 +580,7 @@ test/placement_proof_list_proofs_inner_test.dart
 test/placement_proof_list_test.dart
 test/playback_beat_reply_test.dart
 test/playback_beat_test.dart
+test/playback_end_test.dart
 test/playback_ended_test.dart
 test/playback_start_test.dart
 test/playback_started_test.dart

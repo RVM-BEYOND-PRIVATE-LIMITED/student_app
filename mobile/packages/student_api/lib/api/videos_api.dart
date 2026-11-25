@@ -18,6 +18,8 @@ class VideosApi {
 
   /// Close a playback
   ///
+  /// 0.38.0: send `position_s`, the second the player stopped at, so the video can be continued from there. The body is optional; without it the position of the last heartbeat is kept. A playback that had already ended (replaced, revoked or closed) answers the same and its position is left as it was. 
+  ///
   /// Note: This method returns the HTTP [Response].
   ///
   /// Parameters:
@@ -29,13 +31,15 @@ class VideosApi {
   ///
   /// * [String] xAppVersion:
   ///   The app's version, for example 1.2.0. The web version sends none.
-  Future<Response> endPlaybackWithHttpInfo(String id, String idempotencyKey, { String? xAppVersion, Future<void>? abortTrigger, }) async {
+  ///
+  /// * [PlaybackEnd] playbackEnd:
+  Future<Response> endPlaybackWithHttpInfo(String id, String idempotencyKey, { String? xAppVersion, PlaybackEnd? playbackEnd, Future<void>? abortTrigger, }) async {
     // ignore: prefer_const_declarations
     final path = r'/v1/playback/sessions/{id}/end'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
-    Object? postBody;
+    Object? postBody = playbackEnd;
 
     final queryParams = <QueryParam>[];
     final headerParams = <String, String>{};
@@ -46,7 +50,7 @@ class VideosApi {
       headerParams[r'X-App-Version'] = parameterToString(xAppVersion);
     }
 
-    const contentTypes = <String>[];
+    const contentTypes = <String>['application/json'];
 
 
     return apiClient.invokeAPI(
@@ -63,6 +67,8 @@ class VideosApi {
 
   /// Close a playback
   ///
+  /// 0.38.0: send `position_s`, the second the player stopped at, so the video can be continued from there. The body is optional; without it the position of the last heartbeat is kept. A playback that had already ended (replaced, revoked or closed) answers the same and its position is left as it was. 
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -72,8 +78,10 @@ class VideosApi {
   ///
   /// * [String] xAppVersion:
   ///   The app's version, for example 1.2.0. The web version sends none.
-  Future<PlaybackEnded?> endPlayback(String id, String idempotencyKey, { String? xAppVersion, Future<void>? abortTrigger, }) async {
-    final response = await endPlaybackWithHttpInfo(id, idempotencyKey, xAppVersion: xAppVersion, abortTrigger: abortTrigger,);
+  ///
+  /// * [PlaybackEnd] playbackEnd:
+  Future<PlaybackEnded?> endPlayback(String id, String idempotencyKey, { String? xAppVersion, PlaybackEnd? playbackEnd, Future<void>? abortTrigger, }) async {
+    final response = await endPlaybackWithHttpInfo(id, idempotencyKey, xAppVersion: xAppVersion, playbackEnd: playbackEnd, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
@@ -87,9 +95,72 @@ class VideosApi {
     return null;
   }
 
+  /// Continue watching
+  ///
+  /// The videos of my library that I started and have not finished, newest first, at most 20 (0.38.0, #698). Started: `last_position_s` above 0. Finished: stopped at or after 95% of the length; a finished video leaves this list and stays in the library. A video I never opened is not here. An item that cannot be played now keeps its `locked_reason` (for example `NO_VIEWS_LEFT` once the 60-minute resume has passed): show why, and offer the extra-view request. To continue, start a playback and seek to the `last_position_s` of its answer. 
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<Response> listContinueWatchingWithHttpInfo({ String? xAppVersion, Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final path = r'/v1/me/videos/continue';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (xAppVersion != null) {
+      headerParams[r'X-App-Version'] = parameterToString(xAppVersion);
+    }
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Continue watching
+  ///
+  /// The videos of my library that I started and have not finished, newest first, at most 20 (0.38.0, #698). Started: `last_position_s` above 0. Finished: stopped at or after 95% of the length; a finished video leaves this list and stays in the library. A video I never opened is not here. An item that cannot be played now keeps its `locked_reason` (for example `NO_VIEWS_LEFT` once the 60-minute resume has passed): show why, and offer the extra-view request. To continue, start a playback and seek to the `last_position_s` of its answer. 
+  ///
+  /// Parameters:
+  ///
+  /// * [String] xAppVersion:
+  ///   The app's version, for example 1.2.0. The web version sends none.
+  Future<VideoLibrary?> listContinueWatching({ String? xAppVersion, Future<void>? abortTrigger, }) async {
+    final response = await listContinueWatchingWithHttpInfo(xAppVersion: xAppVersion, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'VideoLibrary',) as VideoLibrary;
+    
+    }
+    return null;
+  }
+
   /// My video library
   ///
-  /// Course videos of my courses, by course and module, and the recordings of my own batches. Each one has `views_left` and, when it cannot be played now, `locked_reason` (`FEE_PENDING`, `NOT_YOUR_COURSE`, `ACCESS_ENDED`, `NO_VIEWS_LEFT`). 
+  /// Course videos of my courses, by course and module, and the recordings of my own batches. Each one has `views_left` and, when it cannot be played now, `locked_reason` (`FEE_PENDING`, `NOT_YOUR_COURSE`, `ACCESS_ENDED`, `NO_VIEWS_LEFT`). 0.38.0: each one also has `last_position_s`, the second I last stopped at (null when I never started it), and `last_watched_at`. 
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -129,7 +200,7 @@ class VideosApi {
 
   /// My video library
   ///
-  /// Course videos of my courses, by course and module, and the recordings of my own batches. Each one has `views_left` and, when it cannot be played now, `locked_reason` (`FEE_PENDING`, `NOT_YOUR_COURSE`, `ACCESS_ENDED`, `NO_VIEWS_LEFT`). 
+  /// Course videos of my courses, by course and module, and the recordings of my own batches. Each one has `views_left` and, when it cannot be played now, `locked_reason` (`FEE_PENDING`, `NOT_YOUR_COURSE`, `ACCESS_ENDED`, `NO_VIEWS_LEFT`). 0.38.0: each one also has `last_position_s`, the second I last stopped at (null when I never started it), and `last_watched_at`. 
   ///
   /// Parameters:
   ///
@@ -152,7 +223,7 @@ class VideosApi {
 
   /// Report the position every 15 seconds
   ///
-  /// `position_s` is the furthest second reached, `elapsed_s` the seconds played since the last beat. The answer can carry `stop: true` with a reason (`closed`, `replaced`, `revoked`): the player stops. 
+  /// `position_s` is the second the player is at now, `elapsed_s` the seconds played since the last beat. The server keeps the furthest second itself (it decides when a view counts) and the last one (0.38.0: what \"Continue watching\" starts from, so going back moves it back). Send one beat when the student pauses as well as every 15 seconds. The answer can carry `stop: true` with a reason (`closed`, `replaced`, `revoked`): the player stops. 
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -201,7 +272,7 @@ class VideosApi {
 
   /// Report the position every 15 seconds
   ///
-  /// `position_s` is the furthest second reached, `elapsed_s` the seconds played since the last beat. The answer can carry `stop: true` with a reason (`closed`, `replaced`, `revoked`): the player stops. 
+  /// `position_s` is the second the player is at now, `elapsed_s` the seconds played since the last beat. The server keeps the furthest second itself (it decides when a view counts) and the last one (0.38.0: what \"Continue watching\" starts from, so going back moves it back). Send one beat when the student pauses as well as every 15 seconds. The answer can carry `stop: true` with a reason (`closed`, `replaced`, `revoked`): the player stops. 
   ///
   /// Parameters:
   ///
@@ -306,7 +377,7 @@ class VideosApi {
 
   /// Start playing a video
   ///
-  /// Checks access in this order: linked admission, full fee paid, the course is mine (or the recording is my batch's), access not ended (6 months after the course end), a view left. Then the device (the bound phone, or my one web session) and one open playback at a time. Returns how to play for this session only (see PlaybackStarted: a signed link to RVM's own storage by default, with the watermark text set by the server; or a VdoCipher token). A view is counted once 5% is watched; reopening within 60 minutes of a counted session does not count again. 
+  /// Checks access in this order: linked admission, full fee paid, the course is mine (or the recording is my batch's), access not ended (6 months after the course end), a view left. Then the device (the bound phone, or my one web session) and one open playback at a time. Returns how to play for this session only (see PlaybackStarted: a signed link to RVM's own storage by default, with the watermark text set by the server; or a VdoCipher token). A view is counted once 5% is watched; reopening within 60 minutes of a counted session does not count again. 0.38.0: `last_position_s` is where I last stopped this video; the player seeks there (null: from the start). 
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -352,7 +423,7 @@ class VideosApi {
 
   /// Start playing a video
   ///
-  /// Checks access in this order: linked admission, full fee paid, the course is mine (or the recording is my batch's), access not ended (6 months after the course end), a view left. Then the device (the bound phone, or my one web session) and one open playback at a time. Returns how to play for this session only (see PlaybackStarted: a signed link to RVM's own storage by default, with the watermark text set by the server; or a VdoCipher token). A view is counted once 5% is watched; reopening within 60 minutes of a counted session does not count again. 
+  /// Checks access in this order: linked admission, full fee paid, the course is mine (or the recording is my batch's), access not ended (6 months after the course end), a view left. Then the device (the bound phone, or my one web session) and one open playback at a time. Returns how to play for this session only (see PlaybackStarted: a signed link to RVM's own storage by default, with the watermark text set by the server; or a VdoCipher token). A view is counted once 5% is watched; reopening within 60 minutes of a counted session does not count again. 0.38.0: `last_position_s` is where I last stopped this video; the player seeks there (null: from the start). 
   ///
   /// Parameters:
   ///

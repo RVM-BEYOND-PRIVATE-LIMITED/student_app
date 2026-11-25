@@ -4,6 +4,24 @@ Additive changes stay in v1: new paths, new optional fields, new enum values the
 tolerates. A breaking change is never made in place: it gets a new path and a raised minimum
 app version, and the old path keeps working until that version is enforced.
 
+## 0.38.0 (25 Nov 2026)
+
+Copied from Scheduler_Backend at commit 4266db6 (release #702, live in production). All additions; older apps ignore them.
+
+- 0.38.0 (Scheduler_Backend #698, student_app #103 "Continue watching"): every `VideoLibrary` item gains
+  `last_position_s` (the second the student last stopped at; null when the video was never started) and
+  `last_watched_at`. New `GET /v1/me/videos/continue` (`listContinueWatching`): the started and unfinished videos,
+  newest first, at most 20; a video stopped at or after 95% of its length is finished and leaves the list, and a
+  locked one stays with its `locked_reason`. `PlaybackStarted` gains `last_position_s`: the player seeks there.
+  `POST /v1/playback/sessions/{id}/end` takes an optional body `{ position_s }`. The heartbeat's `position_s` is
+  where the player is now (the server keeps the furthest second itself); the app also sends one beat on pause.
+- 0.37.0 (Scheduler_Backend #686): `Config` gains `sign_in_public`, true only while the student app is open to
+  everyone. During a pilot it is false, so the website's student links and the web version stay closed.
+- 0.36.0: `Config` gains `sign_in_open`, true while the student app is open for sign-in (on or in pilot). While it
+  is false every sign-in answers `MODULE_OFF`.
+
+The generated Dart client is regenerated.
+
 ## 0.35.1 (21 Nov 2026)
 
 Copied from Scheduler_Backend at commit 3528c4b (release #662, live in production). All additions; older apps ignore them.
