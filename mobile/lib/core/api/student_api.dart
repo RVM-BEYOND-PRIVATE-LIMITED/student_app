@@ -124,6 +124,7 @@ class StudentApi {
     '/v1/me/timetable',
     '/v1/me/today',
     '/v1/me/videos',
+    '/v1/me/videos/continue',
     '/v1/playback/sessions',
     '/v1/playback/sessions/{id}/end',
     '/v1/playback/sessions/{id}/heartbeat',
