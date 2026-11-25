@@ -22,6 +22,8 @@ class VideoLibraryVideosInner {
     required this.durationS,
     required this.viewsLeft,
     required this.lockedReason,
+    required this.lastPositionS,
+    required this.lastWatchedAt,
   });
 
   String id;
@@ -43,6 +45,14 @@ class VideoLibraryVideosInner {
 
   VideoLibraryVideosInnerLockedReasonEnum? lockedReason;
 
+  /// The second the student last stopped this video at (0.38.0,
+  ///
+  /// Minimum value: 0
+  int? lastPositionS;
+
+  /// When that position was recorded. Null when never started.
+  DateTime? lastWatchedAt;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is VideoLibraryVideosInner &&
     other.id == id &&
@@ -53,7 +63,9 @@ class VideoLibraryVideosInner {
     other.batchId == batchId &&
     other.durationS == durationS &&
     other.viewsLeft == viewsLeft &&
-    other.lockedReason == lockedReason;
+    other.lockedReason == lockedReason &&
+    other.lastPositionS == lastPositionS &&
+    other.lastWatchedAt == lastWatchedAt;
 
   @override
   int get hashCode =>
@@ -66,10 +78,12 @@ class VideoLibraryVideosInner {
     (batchId == null ? 0 : batchId!.hashCode) +
     (durationS == null ? 0 : durationS!.hashCode) +
     (viewsLeft.hashCode) +
-    (lockedReason == null ? 0 : lockedReason!.hashCode);
+    (lockedReason == null ? 0 : lockedReason!.hashCode) +
+    (lastPositionS == null ? 0 : lastPositionS!.hashCode) +
+    (lastWatchedAt == null ? 0 : lastWatchedAt!.hashCode);
 
   @override
-  String toString() => 'VideoLibraryVideosInner[id=$id, kind=$kind, title=$title, course=$course, moduleName=$moduleName, batchId=$batchId, durationS=$durationS, viewsLeft=$viewsLeft, lockedReason=$lockedReason]';
+  String toString() => 'VideoLibraryVideosInner[id=$id, kind=$kind, title=$title, course=$course, moduleName=$moduleName, batchId=$batchId, durationS=$durationS, viewsLeft=$viewsLeft, lockedReason=$lockedReason, lastPositionS=$lastPositionS, lastWatchedAt=$lastWatchedAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -102,6 +116,16 @@ class VideoLibraryVideosInner {
     } else {
       json[r'locked_reason'] = null;
     }
+    if (this.lastPositionS != null) {
+      json[r'last_position_s'] = this.lastPositionS;
+    } else {
+      json[r'last_position_s'] = null;
+    }
+    if (this.lastWatchedAt != null) {
+      json[r'last_watched_at'] = this.lastWatchedAt!.toUtc().toIso8601String();
+    } else {
+      json[r'last_watched_at'] = null;
+    }
     return json;
   }
 
@@ -129,6 +153,8 @@ class VideoLibraryVideosInner {
         assert(json.containsKey(r'views_left'), 'Required key "VideoLibraryVideosInner[views_left]" is missing from JSON.');
         assert(json[r'views_left'] != null, 'Required key "VideoLibraryVideosInner[views_left]" has a null value in JSON.');
         assert(json.containsKey(r'locked_reason'), 'Required key "VideoLibraryVideosInner[locked_reason]" is missing from JSON.');
+        assert(json.containsKey(r'last_position_s'), 'Required key "VideoLibraryVideosInner[last_position_s]" is missing from JSON.');
+        assert(json.containsKey(r'last_watched_at'), 'Required key "VideoLibraryVideosInner[last_watched_at]" is missing from JSON.');
         return true;
       }());
 
@@ -142,6 +168,8 @@ class VideoLibraryVideosInner {
         durationS: mapValueOfType<int>(json, r'duration_s'),
         viewsLeft: mapValueOfType<int>(json, r'views_left')!,
         lockedReason: VideoLibraryVideosInnerLockedReasonEnum.fromJson(json[r'locked_reason']),
+        lastPositionS: mapValueOfType<int>(json, r'last_position_s'),
+        lastWatchedAt: mapDateTime(json, r'last_watched_at', r''),
       );
     }
     return null;
@@ -198,6 +226,8 @@ class VideoLibraryVideosInner {
     'duration_s',
     'views_left',
     'locked_reason',
+    'last_position_s',
+    'last_watched_at',
   };
 }
 

@@ -23,6 +23,7 @@ class PlaybackStarted {
     required this.resumed,
     required this.viewsLeft,
     required this.expiresIn,
+    required this.lastPositionS,
   });
 
   String sessionId;
@@ -60,6 +61,11 @@ class PlaybackStarted {
   /// Minimum value: 1
   int expiresIn;
 
+  /// Where the student last stopped this video (0.38.0,
+  ///
+  /// Minimum value: 0
+  int? lastPositionS;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is PlaybackStarted &&
     other.sessionId == sessionId &&
@@ -71,7 +77,8 @@ class PlaybackStarted {
     other.heartbeatSeconds == heartbeatSeconds &&
     other.resumed == resumed &&
     other.viewsLeft == viewsLeft &&
-    other.expiresIn == expiresIn;
+    other.expiresIn == expiresIn &&
+    other.lastPositionS == lastPositionS;
 
   @override
   int get hashCode =>
@@ -85,10 +92,11 @@ class PlaybackStarted {
     (heartbeatSeconds.hashCode) +
     (resumed.hashCode) +
     (viewsLeft.hashCode) +
-    (expiresIn.hashCode);
+    (expiresIn.hashCode) +
+    (lastPositionS == null ? 0 : lastPositionS!.hashCode);
 
   @override
-  String toString() => 'PlaybackStarted[sessionId=$sessionId, provider=$provider, streamUrl=$streamUrl, watermarkText=$watermarkText, otp=$otp, playbackInfo=$playbackInfo, heartbeatSeconds=$heartbeatSeconds, resumed=$resumed, viewsLeft=$viewsLeft, expiresIn=$expiresIn]';
+  String toString() => 'PlaybackStarted[sessionId=$sessionId, provider=$provider, streamUrl=$streamUrl, watermarkText=$watermarkText, otp=$otp, playbackInfo=$playbackInfo, heartbeatSeconds=$heartbeatSeconds, resumed=$resumed, viewsLeft=$viewsLeft, expiresIn=$expiresIn, lastPositionS=$lastPositionS]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -122,6 +130,11 @@ class PlaybackStarted {
       json[r'resumed'] = this.resumed;
       json[r'views_left'] = this.viewsLeft;
       json[r'expires_in'] = this.expiresIn;
+    if (this.lastPositionS != null) {
+      json[r'last_position_s'] = this.lastPositionS;
+    } else {
+      json[r'last_position_s'] = null;
+    }
     return json;
   }
 
@@ -148,6 +161,7 @@ class PlaybackStarted {
         assert(json[r'views_left'] != null, 'Required key "PlaybackStarted[views_left]" has a null value in JSON.');
         assert(json.containsKey(r'expires_in'), 'Required key "PlaybackStarted[expires_in]" is missing from JSON.');
         assert(json[r'expires_in'] != null, 'Required key "PlaybackStarted[expires_in]" has a null value in JSON.');
+        assert(json.containsKey(r'last_position_s'), 'Required key "PlaybackStarted[last_position_s]" is missing from JSON.');
         return true;
       }());
 
@@ -162,6 +176,7 @@ class PlaybackStarted {
         resumed: mapValueOfType<bool>(json, r'resumed')!,
         viewsLeft: mapValueOfType<int>(json, r'views_left')!,
         expiresIn: mapValueOfType<int>(json, r'expires_in')!,
+        lastPositionS: mapValueOfType<int>(json, r'last_position_s'),
       );
     }
     return null;
@@ -216,6 +231,7 @@ class PlaybackStarted {
     'resumed',
     'views_left',
     'expires_in',
+    'last_position_s',
   };
 }
 
